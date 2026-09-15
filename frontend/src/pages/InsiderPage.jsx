@@ -145,6 +145,21 @@ function classColor(cls) {
   return cls === "BUY" ? "var(--green)" : cls === "SELL" ? "var(--red)" : "var(--mid)";
 }
 
+// Same BUY/SELL/OTHER classification for the ALL FILINGS tab, but by source
+// rather than a transaction code — these filing types don't carry a P/S code
+// at all. Form 144 is always a planned SALE. Schedule 13D/13G disclose
+// crossing a >5% ownership threshold, which is inherently an accumulation,
+// so BUY — though note this can't distinguish a fresh purchase from an
+// amendment reflecting a later increase, since the filing doesn't carry a
+// clean directional flag either way. Form 3 (a starting position, not a
+// market trade), 8-K (a material event, not a transaction), and 13F
+// (a quarterly holdings snapshot) aren't directional buy/sell events at all.
+function classifyBySource(source) {
+  if (source === "form144") return "SELL";
+  if (source === "13d" || source === "13g") return "BUY";
+  return "OTHER";
+}
+
 function txnHeadline(row) {
   const cls = classifyTxn(row.transaction_code);
   const verb = cls === "BUY" ? "bought" : cls === "SELL" ? "sold" : "reported";
@@ -153,8 +168,8 @@ function txnHeadline(row) {
   return `${who} ${verb} ${shares} of ${row.ticker}`;
 }
 
-export function InsiderPage({ token, onViewChart }) {
-  const [tab, setTab] = useState("form4"); // "form4" | "all"
+export function InsiderPage({ token, onViewChart, defaultTab = "form4" }) {
+  const [tab, setTab] = useState(defaultTab); // "form4" | "all"
 
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -544,7 +559,21 @@ export function InsiderPage({ token, onViewChart }) {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>
                   <thead>
                     <tr style={{ position: "sticky", top: 0, background: "var(--bg3)", zIndex: 1 }}>
-                      {ALL_FILINGS_COLUMNS.map((c) => (
+                      {ALL_FILINGS_COLUMNS.slice(0, 3).map((c) => (
+                        <th
+                          key={c.key}
+                          onClick={() => onAllSort(c.key)}
+                          style={{
+                            textAlign: "left", padding: "8px 10px", cursor: "pointer",
+                            color: allSort === c.key ? "var(--green)" : "var(--mid)",
+                            borderBottom: "1px solid var(--border)", letterSpacing: 0.6, whiteSpace: "nowrap",
+                          }}
+                        >
+                          {c.label}{allSort === c.key ? (allOrder === "asc" ? " ↑" : " ↓") : ""}
+                        </th>
+                      ))}
+                      <th style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", color: "var(--mid)", letterSpacing: 0.6, whiteSpace: "nowrap" }}>TYPE</th>
+                      {ALL_FILINGS_COLUMNS.slice(3).map((c) => (
                         <th
                           key={c.key}
                           onClick={() => onAllSort(c.key)}
@@ -563,10 +592,10 @@ export function InsiderPage({ token, onViewChart }) {
                   </thead>
                   <tbody>
                     {allLoading && (
-                      <tr><td colSpan={6} style={{ padding: 20, color: "var(--mid)" }}>Loading…</td></tr>
+                      <tr><td colSpan={7} style={{ padding: 20, color: "var(--mid)" }}>Loading…</td></tr>
                     )}
                     {!allLoading && allItems.length === 0 && (
-                      <tr><td colSpan={6} style={{ padding: 20, color: "var(--mid)" }}>No filings in this window.</td></tr>
+                      <tr><td colSpan={7} style={{ padding: 20, color: "var(--mid)" }}>No filings in this window.</td></tr>
                     )}
                     {!allLoading && allItems.map((row, i) => (
                       <tr
@@ -597,6 +626,21 @@ export function InsiderPage({ token, onViewChart }) {
                             {SOURCE_LABELS[row.source] || row.source}
                             {row.is_amendment ? "/A" : ""}
                           </span>
+                        </td>
+                        <td style={{ padding: "7px 10px" }}>
+                          {(() => {
+                            const cls = classifyBySource(row.source);
+                            return (
+                              <span style={{
+                                display: "inline-block", padding: "2px 8px", borderRadius: 3,
+                                fontWeight: 700, fontSize: 10, letterSpacing: 0.5,
+                                color: classColor(cls),
+                                background: cls === "BUY" ? "rgba(34,197,94,.12)" : cls === "SELL" ? "rgba(239,68,68,.12)" : "rgba(255,255,255,.06)",
+                              }}>
+                                {cls}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td style={{ padding: "7px 10px", color: "var(--text)", maxWidth: 320 }}>
                           <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.headline}</div>

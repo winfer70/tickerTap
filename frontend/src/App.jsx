@@ -201,6 +201,7 @@ function AppShell({ page, setPage, goBack, toasts, addToast, pageParams }) {
     { id: "charts",           label: t("nav.charts"),       Icon: Ic.charts       },
     { id: "news",             label: t("nav.news"),         Icon: Ic.news         },
     { id: "insider",          label: "FORM 4",               Icon: Ic.shield       },
+    { id: "insider-all",      label: "ALL FILINGS",          Icon: Ic.file         },
     { id: "watchlist",         label: t("nav.watchlist"),    Icon: Ic.watchlist    },
     { id: "portfolio-manager",label: t("nav.portfolio"),    Icon: Ic.portfolio    },
     { id: "trading",          label: "TRADING AI",           Icon: Ic.trading      },
@@ -329,6 +330,7 @@ function AppShell({ page, setPage, goBack, toasts, addToast, pageParams }) {
                   charts: t("nav.charts"),
                   news: t("nav.news"),
                   insider: "FORM 4",
+                  "insider-all": "ALL FILINGS",
                   watchlist: t("nav.watchlist"),
                   "portfolio-manager": t("nav.portfolio"),
                   settings: t("nav.settings"),
@@ -420,6 +422,14 @@ function AppShell({ page, setPage, goBack, toasts, addToast, pageParams }) {
           <InsiderPage
             token={authToken}
             onViewChart={navigateToChart}
+            defaultTab="form4"
+          />
+        )}
+        {page === "insider-all"  && (
+          <InsiderPage
+            token={authToken}
+            onViewChart={navigateToChart}
+            defaultTab="all"
           />
         )}
         {page === "watchlist"    && (
