@@ -390,6 +390,13 @@ const api = {
     return apiFetch(url, { token });
   },
 
+  /**
+   * "Analyze with AI" — filters the current Insider view down to whatever's
+   * actually held/watchlisted and sends it to Kamilo for a critical verdict.
+   */
+  analyzeInsiderActivity: (body, token) =>
+    apiFetch("/insider/analyze", { method: "POST", body, token }),
+
   // ── Guide ──────────────────────────────────────────────────────────────────
   /**
    * Submit a question to the AI guide (Ollama proxy).

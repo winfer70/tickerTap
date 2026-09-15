@@ -1467,3 +1467,42 @@ class Form13FHolding(Base):
     filed_at = Column(DateTime(timezone=True), nullable=True)
     filing_url = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class InsiderAiAnalysis(Base):
+    """One "Analyze with AI" request from the Insider page — the filings and
+    portfolio context sent, and Kamilo's critical verdict back.
+
+    Kamilo (a separate personal-assistant service, see winfer70/kamilo) is
+    the analyst, not this app's own Ollama stack used elsewhere for trade
+    analysis — the request explicitly asked for Kamilo, and for the verdict
+    to be fed into Kamilo's own memory as a self-learning loop, which
+    kamilo-core's /analyze/insider endpoint does on its side. This table is
+    tickerTap's own copy of the record, so past analyses are browsable
+    in-app and could later be graded against what actually happened, the
+    same way insider-owner track records already are.
+    """
+
+    __tablename__ = "insider_ai_analyses"
+    __table_args__ = (
+        Index("idx_insider_ai_analyses_user_id", "user_id"),
+        Index("idx_insider_ai_analyses_ticker", "ticker"),
+    )
+
+    analysis_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    source_tab = Column(String(10), nullable=False)  # "form4" | "all"
+    ticker = Column(String(20), nullable=True)  # null when the view covered multiple tickers
+    filters_json = Column(JSONB, nullable=True)  # active filters at request time (days, code/source)
+    filings_considered = Column(JSONB, nullable=True)  # normalized snapshot of what was sent to Kamilo
+    portfolio_snapshot = Column(JSONB, nullable=True)  # held/watchlisted position(s) at request time
+    rating = Column(String(10), nullable=True)  # BULLISH | BEARISH | NEUTRAL | NOISE
+    confidence = Column(Integer, nullable=True)  # 0-100
+    verdict = Column(Text, nullable=True)
+    raw_response = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)  # set instead of the above if the Kamilo call itself failed
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -199,6 +199,10 @@ export function InsiderPage({ token, onViewChart, defaultTab = "form4" }) {
   const [ownerError, setOwnerError] = useState(null);
   const [txnDetail, setTxnDetail] = useState(null);
 
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisError, setAnalysisError] = useState(null);
+
   const load = useCallback(async () => {
     if (!token || tab !== "form4") return;
     setLoading(true);
@@ -288,6 +292,26 @@ export function InsiderPage({ token, onViewChart, defaultTab = "form4" }) {
       setOwner(null);
     } finally {
       setOwnerLoading(false);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    setAnalyzing(true);
+    setAnalysisError(null);
+    setAnalysisResult(null);
+    try {
+      const result = await api.analyzeInsiderActivity({
+        source_tab: tab,
+        ticker: ticker.trim() || null,
+        days,
+        code: tab === "form4" && code !== "all" ? code : null,
+        source: tab === "all" ? source : null,
+      }, token);
+      setAnalysisResult(result);
+    } catch (e) {
+      setAnalysisError(e.message || "Analysis failed");
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -400,6 +424,22 @@ export function InsiderPage({ token, onViewChart, defaultTab = "form4" }) {
             </button>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={handleAnalyze}
+          disabled={analyzing}
+          title="Sends whatever's currently shown, filtered to tickers you hold or watch, to Kamilo for a critical read"
+          style={{
+            marginLeft: "auto", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600,
+            letterSpacing: 0.6, padding: "6px 14px", borderRadius: 3,
+            cursor: analyzing ? "default" : "pointer",
+            border: "1px solid #c15fd9", background: "rgba(193,95,217,0.12)",
+            color: "#c15fd9", opacity: analyzing ? 0.6 : 1,
+          }}
+        >
+          {analyzing ? "ANALYZING…" : "✦ ANALYZE WITH AI"}
+        </button>
       </div>
 
       <div style={{ display: "flex", gap: 14, flex: 1, minHeight: 0 }}>
@@ -838,6 +878,79 @@ export function InsiderPage({ token, onViewChart, defaultTab = "form4" }) {
       {txnDetail && (
         <TransactionDetailModal row={txnDetail} onClose={() => setTxnDetail(null)} onViewChart={onViewChart} />
       )}
+
+      {(analysisResult || analysisError) && (
+        <AiAnalysisModal
+          result={analysisResult}
+          error={analysisError}
+          onClose={() => { setAnalysisResult(null); setAnalysisError(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AiAnalysisModal({ result, error, onClose }) {
+  const rating = result?.rating;
+  const ratingColor = rating === "BULLISH" ? "var(--green)" : rating === "BEARISH" ? "var(--red)" : "var(--mid)";
+  const ratingBg = rating === "BULLISH" ? "rgba(34,197,94,.12)" : rating === "BEARISH" ? "rgba(239,68,68,.12)" : "rgba(255,255,255,.06)";
+
+  return (
+    <div
+      className="modal-overlay"
+      style={MODAL_BACKDROP}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal-box" style={{ maxWidth: 480, fontFamily: "'IBM Plex Mono',monospace" }}>
+        <div className="modal-top">
+          <div className="modal-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            ✦ KAMILO ANALYSIS
+          </div>
+          <button className="modal-close" onClick={onClose}><Ic.close /></button>
+        </div>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 12 }}>
+          {error && (
+            <div style={{ color: "var(--red)", lineHeight: 1.5 }}>{error}</div>
+          )}
+          {result && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{
+                  display: "inline-block", padding: "3px 10px", borderRadius: 3,
+                  fontWeight: 700, fontSize: 11, letterSpacing: 0.5,
+                  color: ratingColor, background: ratingBg,
+                }}>
+                  {rating || "UNRATED"}
+                </span>
+                {result.confidence != null && (
+                  <span style={{ color: "var(--mid)", fontSize: 11 }}>{result.confidence}% confidence</span>
+                )}
+              </div>
+
+              <div style={{ color: "var(--text)", lineHeight: 1.6 }}>
+                {result.verdict || "Kamilo did not return a structured verdict — check the raw response on the backend."}
+              </div>
+
+              <div style={{ color: "var(--mid)", fontSize: 10, lineHeight: 1.5, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                {result.filing_count > 0 ? (
+                  <>
+                    Considered {result.filing_count} filing{result.filing_count === 1 ? "" : "s"}
+                    {result.tickers_analyzed?.length > 0 && (
+                      <> across {result.tickers_analyzed.join(", ")}</>
+                    )}
+                    . Saved to your analysis history, and Kamilo has stored this verdict in its own memory.
+                  </>
+                ) : (
+                  "No filings in the current view matched a ticker you hold or watch."
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost" onClick={onClose}>CLOSE</button>
+        </div>
+      </div>
     </div>
   );
 }
