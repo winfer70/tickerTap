@@ -20,7 +20,13 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 10.51.0.0/16   # separate private subnet from the primary stack's 10.50.0.0/16 to avoid collisions during cutover
+        # Must match the network's actual live subnet (verified via
+        # `docker network inspect tickertap_tickertap_net`) — it is
+        # 172.29.0.0/16 in prod, not the 10.51.0.0/16 originally planned
+        # here. A mismatch makes `docker compose up` try to recreate the
+        # network and fail with "active endpoints" since every tickerTap
+        # container is still attached to it.
+        - subnet: 172.29.0.0/16
 
 services:
   db:
