@@ -145,6 +145,21 @@ function classColor(cls) {
   return cls === "BUY" ? "var(--green)" : cls === "SELL" ? "var(--red)" : "var(--mid)";
 }
 
+// Same BUY/SELL/OTHER classification for the ALL FILINGS tab, but by source
+// rather than a transaction code — these filing types don't carry a P/S code
+// at all. Form 144 is always a planned SALE. Schedule 13D/13G disclose
+// crossing a >5% ownership threshold, which is inherently an accumulation,
+// so BUY — though note this can't distinguish a fresh purchase from an
+// amendment reflecting a later increase, since the filing doesn't carry a
+// clean directional flag either way. Form 3 (a starting position, not a
+// market trade), 8-K (a material event, not a transaction), and 13F
+// (a quarterly holdings snapshot) aren't directional buy/sell events at all.
+function classifyBySource(source) {
+  if (source === "form144") return "SELL";
+  if (source === "13d" || source === "13g") return "BUY";
+  return "OTHER";
+}
+
 function txnHeadline(row) {
   const cls = classifyTxn(row.transaction_code);
   const verb = cls === "BUY" ? "bought" : cls === "SELL" ? "sold" : "reported";
@@ -153,8 +168,8 @@ function txnHeadline(row) {
   return `${who} ${verb} ${shares} of ${row.ticker}`;
 }
 
-export function InsiderPage({ token, onViewChart }) {
-  const [tab, setTab] = useState("form4"); // "form4" | "all"
+export function InsiderPage({ token, onViewChart, defaultTab = "form4" }) {
+  const [tab, setTab] = useState(defaultTab); // "form4" | "all"
 
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -183,6 +198,10 @@ export function InsiderPage({ token, onViewChart }) {
   const [ownerLoading, setOwnerLoading] = useState(false);
   const [ownerError, setOwnerError] = useState(null);
   const [txnDetail, setTxnDetail] = useState(null);
+
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisError, setAnalysisError] = useState(null);
 
   const load = useCallback(async () => {
     if (!token || tab !== "form4") return;
@@ -273,6 +292,26 @@ export function InsiderPage({ token, onViewChart }) {
       setOwner(null);
     } finally {
       setOwnerLoading(false);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    setAnalyzing(true);
+    setAnalysisError(null);
+    setAnalysisResult(null);
+    try {
+      const result = await api.analyzeInsiderActivity({
+        source_tab: tab,
+        ticker: ticker.trim() || null,
+        days,
+        code: tab === "form4" && code !== "all" ? code : null,
+        source: tab === "all" ? source : null,
+      }, token);
+      setAnalysisResult(result);
+    } catch (e) {
+      setAnalysisError(e.message || "Analysis failed");
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -385,6 +424,22 @@ export function InsiderPage({ token, onViewChart }) {
             </button>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={handleAnalyze}
+          disabled={analyzing}
+          title="Sends whatever's currently shown, filtered to tickers you hold or watch, to Kamilo for a critical read"
+          style={{
+            marginLeft: "auto", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600,
+            letterSpacing: 0.6, padding: "6px 14px", borderRadius: 3,
+            cursor: analyzing ? "default" : "pointer",
+            border: "1px solid #c15fd9", background: "rgba(193,95,217,0.12)",
+            color: "#c15fd9", opacity: analyzing ? 0.6 : 1,
+          }}
+        >
+          {analyzing ? "ANALYZING…" : "✦ ANALYZE WITH AI"}
+        </button>
       </div>
 
       <div style={{ display: "flex", gap: 14, flex: 1, minHeight: 0 }}>
@@ -544,7 +599,21 @@ export function InsiderPage({ token, onViewChart }) {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>
                   <thead>
                     <tr style={{ position: "sticky", top: 0, background: "var(--bg3)", zIndex: 1 }}>
-                      {ALL_FILINGS_COLUMNS.map((c) => (
+                      {ALL_FILINGS_COLUMNS.slice(0, 3).map((c) => (
+                        <th
+                          key={c.key}
+                          onClick={() => onAllSort(c.key)}
+                          style={{
+                            textAlign: "left", padding: "8px 10px", cursor: "pointer",
+                            color: allSort === c.key ? "var(--green)" : "var(--mid)",
+                            borderBottom: "1px solid var(--border)", letterSpacing: 0.6, whiteSpace: "nowrap",
+                          }}
+                        >
+                          {c.label}{allSort === c.key ? (allOrder === "asc" ? " ↑" : " ↓") : ""}
+                        </th>
+                      ))}
+                      <th style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", color: "var(--mid)", letterSpacing: 0.6, whiteSpace: "nowrap" }}>TYPE</th>
+                      {ALL_FILINGS_COLUMNS.slice(3).map((c) => (
                         <th
                           key={c.key}
                           onClick={() => onAllSort(c.key)}
@@ -563,10 +632,10 @@ export function InsiderPage({ token, onViewChart }) {
                   </thead>
                   <tbody>
                     {allLoading && (
-                      <tr><td colSpan={6} style={{ padding: 20, color: "var(--mid)" }}>Loading…</td></tr>
+                      <tr><td colSpan={7} style={{ padding: 20, color: "var(--mid)" }}>Loading…</td></tr>
                     )}
                     {!allLoading && allItems.length === 0 && (
-                      <tr><td colSpan={6} style={{ padding: 20, color: "var(--mid)" }}>No filings in this window.</td></tr>
+                      <tr><td colSpan={7} style={{ padding: 20, color: "var(--mid)" }}>No filings in this window.</td></tr>
                     )}
                     {!allLoading && allItems.map((row, i) => (
                       <tr
@@ -597,6 +666,21 @@ export function InsiderPage({ token, onViewChart }) {
                             {SOURCE_LABELS[row.source] || row.source}
                             {row.is_amendment ? "/A" : ""}
                           </span>
+                        </td>
+                        <td style={{ padding: "7px 10px" }}>
+                          {(() => {
+                            const cls = classifyBySource(row.source);
+                            return (
+                              <span style={{
+                                display: "inline-block", padding: "2px 8px", borderRadius: 3,
+                                fontWeight: 700, fontSize: 10, letterSpacing: 0.5,
+                                color: classColor(cls),
+                                background: cls === "BUY" ? "rgba(34,197,94,.12)" : cls === "SELL" ? "rgba(239,68,68,.12)" : "rgba(255,255,255,.06)",
+                              }}>
+                                {cls}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td style={{ padding: "7px 10px", color: "var(--text)", maxWidth: 320 }}>
                           <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.headline}</div>
@@ -794,6 +878,79 @@ export function InsiderPage({ token, onViewChart }) {
       {txnDetail && (
         <TransactionDetailModal row={txnDetail} onClose={() => setTxnDetail(null)} onViewChart={onViewChart} />
       )}
+
+      {(analysisResult || analysisError) && (
+        <AiAnalysisModal
+          result={analysisResult}
+          error={analysisError}
+          onClose={() => { setAnalysisResult(null); setAnalysisError(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AiAnalysisModal({ result, error, onClose }) {
+  const rating = result?.rating;
+  const ratingColor = rating === "BULLISH" ? "var(--green)" : rating === "BEARISH" ? "var(--red)" : "var(--mid)";
+  const ratingBg = rating === "BULLISH" ? "rgba(34,197,94,.12)" : rating === "BEARISH" ? "rgba(239,68,68,.12)" : "rgba(255,255,255,.06)";
+
+  return (
+    <div
+      className="modal-overlay"
+      style={MODAL_BACKDROP}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal-box" style={{ maxWidth: 480, fontFamily: "'IBM Plex Mono',monospace" }}>
+        <div className="modal-top">
+          <div className="modal-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            ✦ KAMILO ANALYSIS
+          </div>
+          <button className="modal-close" onClick={onClose}><Ic.close /></button>
+        </div>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 12 }}>
+          {error && (
+            <div style={{ color: "var(--red)", lineHeight: 1.5 }}>{error}</div>
+          )}
+          {result && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{
+                  display: "inline-block", padding: "3px 10px", borderRadius: 3,
+                  fontWeight: 700, fontSize: 11, letterSpacing: 0.5,
+                  color: ratingColor, background: ratingBg,
+                }}>
+                  {rating || "UNRATED"}
+                </span>
+                {result.confidence != null && (
+                  <span style={{ color: "var(--mid)", fontSize: 11 }}>{result.confidence}% confidence</span>
+                )}
+              </div>
+
+              <div style={{ color: "var(--text)", lineHeight: 1.6 }}>
+                {result.verdict || "Kamilo did not return a structured verdict — check the raw response on the backend."}
+              </div>
+
+              <div style={{ color: "var(--mid)", fontSize: 10, lineHeight: 1.5, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                {result.filing_count > 0 ? (
+                  <>
+                    Considered {result.filing_count} filing{result.filing_count === 1 ? "" : "s"}
+                    {result.tickers_analyzed?.length > 0 && (
+                      <> across {result.tickers_analyzed.join(", ")}</>
+                    )}
+                    . Saved to your analysis history, and Kamilo has stored this verdict in its own memory.
+                  </>
+                ) : (
+                  "No filings in the current view matched a ticker you hold or watch."
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost" onClick={onClose}>CLOSE</button>
+        </div>
+      </div>
     </div>
   );
 }

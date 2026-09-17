@@ -5,10 +5,12 @@ Read-only API over insider_filings (populated by trading-worker poller).
 
 from __future__ import annotations
 
+import os
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import asc, desc, func, select
@@ -21,8 +23,10 @@ from ..models import (
     Form3Statement,
     Form13FHolding,
     Form144Notice,
+    InsiderAiAnalysis,
     InsiderFiling,
 )
+from ..trading.book_loader import load_books
 from ..trading.finra_short_interest import get_latest_short_interest
 from ..trading.insider_track_record import compute_track_record
 from .auth_routes import get_current_user
@@ -623,3 +627,197 @@ async def list_all_filings(
     total = len(items)
     page = items[offset : offset + limit]
     return AllFilingsListOut(total=total, items=page)
+
+
+# ── Analyze with AI (Kamilo) ─────────────────────────────────────────────────
+# "Analyze with AI" on the Insider page: takes whatever filings the current
+# view/filters would show, keeps only the ones for tickers actually held or
+# watchlisted (no point asking for portfolio advice on names not in the
+# portfolio), and sends that plus position context to Kamilo — a separate
+# personal-assistant service (winfer70/kamilo), not this app's own Ollama
+# trade-analysis stack — for a critical verdict. Kamilo's /analyze/insider
+# also feeds the verdict into its own memory (the "self-learning loop" the
+# request asked for); this table is tickerTap's own copy so past analyses
+# are browsable in-app and can later be graded against outcomes.
+
+KAMILO_URL = os.getenv("KAMILO_URL", "http://192.168.0.125:8100")
+KAMILO_ANALYSIS_TOKEN = os.getenv("KAMILO_ANALYSIS_TOKEN", "")
+
+
+class AnalyzeIn(BaseModel):
+    source_tab: str = Field(..., description="form4 | all — which tab triggered this")
+    ticker: Optional[str] = None
+    days: int = Field(90, ge=1, le=730)
+    code: Optional[str] = Field(None, description="Form 4 code filter (P/S), form4 tab only")
+    source: Optional[str] = Field(None, description="all|form144|form3|... , all-filings tab only")
+
+
+class AnalyzeOut(BaseModel):
+    analysis_id: UUID
+    rating: Optional[str] = None
+    confidence: Optional[int] = None
+    verdict: Optional[str] = None
+    tickers_analyzed: list[str]
+    filing_count: int
+    created_at: datetime
+
+
+def _fmt_form4_summary(f: "FilingOut") -> str:
+    title = f.officer_title or ("Director" if f.is_director else "insider")
+    parts = [f"{f.transaction_date} {f.transaction_code} — {f.owner_name or 'unknown'} ({title})"]
+    if f.shares is not None:
+        parts.append(f"{f.shares:g} sh")
+    if f.price is not None:
+        parts.append(f"@ ${f.price:.2f}")
+    if f.notional is not None:
+        parts.append(f"(${f.notional:,.0f})")
+    if f.stake_pct is not None:
+        parts.append(f"— {f.stake_pct * 100:.2f}% of stake")
+    return " ".join(parts)
+
+
+def _build_analysis_prompt(ticker_groups: dict, portfolio: dict) -> str:
+    lines = [
+        "Analyze this SEC insider/institutional filing activity against my "
+        "actual portfolio. Give ONE overall rating focused on whichever "
+        "ticker below is most material; mention the others in the verdict "
+        "if relevant.",
+        "",
+    ]
+    for ticker, rows in ticker_groups.items():
+        pos = portfolio.get(ticker)
+        if pos:
+            lines.append(
+                f"TICKER: {ticker} — HELD: {pos['quantity']:g} sh @ ${pos['purchase_price']:.2f} cost basis"
+                + (f", soft stop ${pos['soft_stop']:.2f}" if pos.get("soft_stop") else "")
+            )
+        else:
+            lines.append(f"TICKER: {ticker} — watchlisted only, no position")
+        for r in rows[:15]:
+            lines.append(f"  - {r}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+@router.post("/analyze", response_model=AnalyzeOut)
+async def analyze_with_ai(
+    body: AnalyzeIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Filter the current view down to portfolio-relevant activity, send it
+    to Kamilo for a critical verdict, and store the result."""
+    if not KAMILO_ANALYSIS_TOKEN:
+        raise HTTPException(status_code=503, detail="AI analysis is not configured (KAMILO_ANALYSIS_TOKEN unset)")
+
+    books, _sectors = await load_books(db)
+    book = books.get(current_user.user_id) or books.get(str(current_user.user_id))
+    tracked = (set(book.held_tickers) | set(book.watchlist_tickers)) if book else set()
+    positions = book.positions if book else {}
+
+    # Reuse the exact same query logic the list endpoints use — every
+    # Query(...)-defaulted param must be passed explicitly since calling a
+    # route function directly bypasses FastAPI's own default resolution.
+    if body.source_tab == "form4":
+        result = await list_filings(
+            ticker=body.ticker, owner_cik=None, code=body.code, days=body.days,
+            sort="transaction_date", order="desc", limit=200, offset=0, db=db,
+        )
+        raw_rows = [
+            {"ticker": (f.ticker or "").upper(), "summary": _fmt_form4_summary(f)}
+            for f in result.items
+        ]
+    else:
+        result = await list_all_filings(
+            ticker=body.ticker, source=body.source or "all", days=body.days,
+            sort="date", order="desc", limit=200, offset=0, db=db,
+        )
+        raw_rows = [
+            {
+                "ticker": (f.ticker or "").upper(),
+                "summary": (
+                    f"{f.filing_date} [{f.source.upper()}{'/A' if f.is_amendment else ''}]"
+                    f" {f.headline}" + (f" — {f.detail}" if f.detail else "")
+                ),
+            }
+            for f in result.items
+            if f.ticker
+        ]
+
+    ticker_groups: dict = {}
+    for r in raw_rows:
+        if r["ticker"] not in tracked:
+            continue
+        ticker_groups.setdefault(r["ticker"], []).append(r["summary"])
+
+    filters_json = {"days": body.days, "code": body.code, "source": body.source, "ticker": body.ticker}
+
+    if not ticker_groups:
+        analysis = InsiderAiAnalysis(
+            analysis_id=uuid4(),
+            user_id=current_user.user_id,
+            source_tab=body.source_tab,
+            ticker=body.ticker,
+            filters_json=filters_json,
+            filings_considered={"count": 0},
+            portfolio_snapshot=None,
+            rating="NOISE",
+            confidence=100,
+            verdict="None of the filings currently shown match a ticker you hold or watch — nothing here is relevant to your portfolio.",
+        )
+        db.add(analysis)
+        await db.commit()
+        return AnalyzeOut(
+            analysis_id=analysis.analysis_id, rating=analysis.rating, confidence=analysis.confidence,
+            verdict=analysis.verdict, tickers_analyzed=[], filing_count=0, created_at=analysis.created_at,
+        )
+
+    portfolio_snapshot = {t: positions[t] for t in ticker_groups if t in positions}
+    prompt = _build_analysis_prompt(ticker_groups, positions)
+
+    analysis_id = uuid4()
+    try:
+        async with httpx.AsyncClient(timeout=100) as client:
+            resp = await client.post(
+                f"{KAMILO_URL}/analyze/insider",
+                json={"ticker": body.ticker or next(iter(ticker_groups)), "context": prompt},
+                headers={"X-Kamilo-Token": KAMILO_ANALYSIS_TOKEN},
+            )
+        if resp.status_code != 200:
+            raise RuntimeError(f"Kamilo returned HTTP {resp.status_code}: {resp.text[:200]}")
+        kamilo_out = resp.json()
+        analysis = InsiderAiAnalysis(
+            analysis_id=analysis_id,
+            user_id=current_user.user_id,
+            source_tab=body.source_tab,
+            ticker=body.ticker,
+            filters_json=filters_json,
+            filings_considered={t: rows[:15] for t, rows in ticker_groups.items()},
+            portfolio_snapshot=portfolio_snapshot or None,
+            rating=kamilo_out.get("rating"),
+            confidence=kamilo_out.get("confidence"),
+            verdict=kamilo_out.get("verdict"),
+            raw_response=kamilo_out.get("raw"),
+        )
+    except Exception as exc:
+        analysis = InsiderAiAnalysis(
+            analysis_id=analysis_id,
+            user_id=current_user.user_id,
+            source_tab=body.source_tab,
+            ticker=body.ticker,
+            filters_json=filters_json,
+            filings_considered={t: rows[:15] for t, rows in ticker_groups.items()},
+            portfolio_snapshot=portfolio_snapshot or None,
+            error_message=str(exc)[:500],
+        )
+        db.add(analysis)
+        await db.commit()
+        raise HTTPException(status_code=502, detail=f"Kamilo analysis failed: {exc}") from exc
+
+    db.add(analysis)
+    await db.commit()
+    return AnalyzeOut(
+        analysis_id=analysis.analysis_id, rating=analysis.rating, confidence=analysis.confidence,
+        verdict=analysis.verdict, tickers_analyzed=sorted(ticker_groups), filing_count=len(raw_rows),
+        created_at=analysis.created_at,
+    )
