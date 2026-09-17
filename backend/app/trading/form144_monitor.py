@@ -1,20 +1,32 @@
 """form144_monitor.py — Poll EDGAR Form 144 notices, resolve ticker, store,
-and alert directly for tracked tickers.
+and alert directly for real portfolio holdings above a materiality floor.
 
 Cron on trading-worker at a slower cadence than Form 4. Originally this
 only stored notices for insider_monitor.py's sell-gate path to correlate
 against a later Form 4 sell (FREE_FILINGS_RESEARCH.md's "surface it, don't
 auto-alert on it yet" — see get_recent_144_notice() below, still used for
-that). But a Form 144 *is* a real SEC concept for "planned sell" — the
-closest thing to advance notice of an insider trade that exists — so a
-tracked ticker (portfolio position or watchlist item) now gets its own
-"planned_sell" alert the moment the notice lands, not just after-the-fact
-context on a Form 4 that may or may not follow.
+that). A Form 144 *is* a real SEC concept for "planned sell" — the closest
+thing to advance notice of an insider trade that exists — so a real
+holding now gets its own "planned_sell" alert the moment the notice lands,
+not just after-the-fact context on a Form 4 that may or may not follow.
 
-Deliberately lighter than the Form 4 alert pipeline: no news/volume/
-consensus/track-record fetch, since a 144 is a notice of intent, not a
-completed transaction — those data-fetching dependencies would add a lot
-of surface area for an event that might not even result in a trade.
+Two deliberate limits, both added after the "no gate at all" version of
+this turned out to be the single biggest source of low-value Telegram
+volume once watchlist tickers got full parity with real holdings:
+1. **Held positions only, not watchlist.** A watchlist is normally much
+   bigger than a portfolio, and a mere notice of intent on a name you're
+   just watching (not holding) is rarely worth an interrupt — you have no
+   position to act on. Form 4 (an actual completed transaction) still
+   covers watchlist tickers; this earlier, softer signal doesn't.
+2. **MIN_144_VALUE_USD floor**, mirroring Form 4's DEFAULT_MIN_BUY_USD gate
+   (insider_gate.py) — a $3,000 routine 10b5-1 liquidation notice isn't
+   the same event as a $10M insider dumping most of their stake.
+
+Deliberately lighter than the Form 4 alert pipeline in every other way: no
+news/volume/consensus/track-record fetch, since a 144 is a notice of
+intent, not a completed transaction — those data-fetching dependencies
+would add a lot of surface area for an event that might not even result
+in a trade.
 """
 from __future__ import annotations
 
@@ -30,6 +42,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from ..models import Form144Notice
+from .alert_cooldown import should_send_alert
 from .book_loader import load_books
 from .cik_ticker_map import resolve_ticker
 from .form144_edgar import FORM144_ATOM_URL, parse_form144_xml
@@ -47,6 +60,12 @@ _REQUEST_PAUSE_S = 0.25
 # A 144 states an *intended* sale date but the matching Form 4 sometimes
 # lands late — widen past that date rather than cutting off exactly on it.
 _CORRELATION_WINDOW_DAYS = 90
+# Every 144 notice on a tracked ticker used to alert unconditionally — no
+# dollar floor, unlike Form 4's DEFAULT_MIN_BUY_USD gate. That made this the
+# single biggest source of "no action for me" Telegram volume once watchlist
+# tickers got full parity with real holdings (a watchlist is normally much
+# bigger than a portfolio). Mirroring Form 4's threshold here.
+MIN_144_VALUE_USD = Decimal("25000")
 
 _engine = create_async_engine(_DATABASE_URL, echo=False, pool_size=2, max_overflow=1, pool_pre_ping=True)
 _SessionLocal = sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
@@ -202,21 +221,28 @@ async def poll_form144_filings(ctx: dict) -> dict:
                 )
                 stats["stored"] += 1
 
-                if ticker:
-                    targets = {
-                        uid
-                        for uid, b in books.items()
-                        if ticker in b.held_tickers or ticker in b.watchlist_tickers
-                    }
+                # A 144 without a computed aggregate value (rare, but the
+                # SEC schema allows it) falls below the floor and is never
+                # alerted — accepted limitation rather than adding a price
+                # fetch this monitor deliberately avoids (see docstring).
+                value = parsed["aggregate_value"] or 0
+                if ticker and Decimal(str(value)) >= MIN_144_VALUE_USD:
+                    # Held positions only — see module docstring. Watchlist
+                    # tickers still get the real Form 4 sale, just not this
+                    # earlier, softer "notice of intent" signal.
+                    targets = {uid for uid, b in books.items() if ticker in b.held_tickers}
                     for uid in targets:
-                        held = ticker in books[uid].held_tickers
-                        watched = ticker in books[uid].watchlist_tickers
+                        summary = f"{parsed.get('owner_name') or 'insider'} — {value:,.0f} planned sale"
+                        if not await should_send_alert(
+                            session, uid, ticker, "planned_sell", summary,
+                        ):
+                            continue
                         await notify_soft_stop(
                             db=session,
                             user_id=uid,
                             event_type="planned_sell",
                             title=_format_planned_sell_title(ticker, parsed),
-                            body=_format_planned_sell_body(parsed, held=held, watched=watched),
+                            body=_format_planned_sell_body(parsed, held=True, watched=False),
                             metadata={"source": "form144_monitor", "ticker": ticker},
                             ntfy_priority=4,
                             send_in_app=True,

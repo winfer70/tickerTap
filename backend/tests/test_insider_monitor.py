@@ -68,9 +68,9 @@ def _deps(book=None, notifies=None, user_id=None):
     notifies = notifies if notifies is not None else []
     uid = user_id or uuid.uuid4()
 
-    async def _notify(user, event, title, body, prio):
+    async def _notify(user, event, title, body, prio, ticker=None):
         notifies.append(
-            {"user_id": user, "event": event, "title": title, "body": body, "prio": prio}
+            {"user_id": user, "event": event, "title": title, "body": body, "prio": prio, "ticker": ticker}
         )
 
     return CycleDeps(
@@ -101,9 +101,9 @@ def _deps_multi(
     as production code (poll_insider_filings) now does."""
     notifies = notifies if notifies is not None else []
 
-    async def _notify(user, event, title, body, prio):
+    async def _notify(user, event, title, body, prio, ticker=None):
         notifies.append(
-            {"user_id": user, "event": event, "title": title, "body": body, "prio": prio}
+            {"user_id": user, "event": event, "title": title, "body": body, "prio": prio, "ticker": ticker}
         )
 
     return CycleDeps(

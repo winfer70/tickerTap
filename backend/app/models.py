@@ -1506,3 +1506,73 @@ class InsiderAiAnalysis(Base):
     raw_response = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)  # set instead of the above if the Kamilo call itself failed
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class TickerAlertCooldown(Base):
+    """One row per (user, ticker, event_type) tracking the last time an
+    insider-filing alert of that type was actually sent to Telegram.
+
+    Scoped by event_type (not just ticker) deliberately: a "planned_sell"
+    (Form 144) and an "insider_sell" (the actual Form 4 execution) on the
+    same ticker are different events worth knowing about separately, so a
+    144 notice cooling down must never suppress the real sale confirmation
+    that follows it. What it DOES suppress is e.g. three separate Form 144
+    notices from three different insiders on the same ticker in one day —
+    only the first sends; the rest accumulate into suppressed_summaries for
+    the end-of-day digest instead of each becoming their own Telegram ping.
+
+    Soft-stop alerts have their own, older per-position dedup
+    (PortfolioPosition.soft_stop_delivery_json) and don't use this table.
+    """
+
+    __tablename__ = "ticker_alert_cooldowns"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "ticker", "event_type", name="uq_ticker_alert_cooldowns_user_ticker_event"
+        ),
+    )
+
+    cooldown_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ticker = Column(String(20), nullable=False)
+    event_type = Column(String(30), nullable=False)
+    last_alert_at = Column(DateTime(timezone=True), nullable=False)
+    # Alerts that arrived during the cooldown window and were NOT sent —
+    # short text summaries, most recent last, capped at 10. Reported (and
+    # cleared) by the end-of-day digest so nothing suppressed just vanishes.
+    suppressed_summaries = Column(JSONB, nullable=True)
+    suppressed_count = Column(Integer, nullable=False, server_default="0")
+
+
+class DailyBriefingLog(Base):
+    """One row per (user, briefing_type, sent_date) — dedup for
+    daily_briefing.py's pre-market/post-market Telegram digests.
+
+    The arq cron job that sends these runs every few minutes and checks
+    "is it currently within the target ET window" itself (same DST-safe
+    pattern as alert_worker.py's _is_after_rth_close), rather than relying
+    on a single fixed-UTC cron minute — so the window can be hit more than
+    once per day; this table is what makes a second hit within the same
+    window a no-op instead of a duplicate Telegram message.
+    """
+
+    __tablename__ = "daily_briefing_log"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "briefing_type", "sent_date", name="uq_daily_briefing_log_user_type_date"
+        ),
+    )
+
+    log_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    briefing_type = Column(String(20), nullable=False)
+    sent_date = Column(Date, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
