@@ -39,6 +39,7 @@ from ..logging_config import configure_structlog
 from .heartbeat import write_worker_heartbeat
 from .insider_monitor import poll_insider_filings  # noqa: F401 — registered in WorkerSettings
 from .form144_monitor import poll_form144_filings  # noqa: F401 — registered in WorkerSettings
+from .daily_briefing import send_premarket_briefings, send_postmarket_briefings  # noqa: F401 — registered in WorkerSettings
 from .form3_monitor import poll_form3_filings  # noqa: F401 — registered in WorkerSettings
 from .schedule13_monitor import poll_schedule13_filings  # noqa: F401 — registered in WorkerSettings
 from .form8k_monitor import poll_8k_filings  # noqa: F401 — registered in WorkerSettings
@@ -1035,14 +1036,18 @@ class WorkerSettings:
         poll_8k_filings,
         poll_13f_filings,
         poll_short_interest,
+        send_premarket_briefings,
+        send_postmarket_briefings,
     ]
     queue_name = "arq:trading"
     cron_jobs = [
         cron(_periodic_heartbeat, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
         cron(poll_insider_filings, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
-        # Slower cadence than Form 4 — a 144 alone doesn't fire its own alert
-        # (see form144_monitor.py), it just needs to be on file before the
-        # matching Form 4 sell shows up so that alert can reference it.
+        # Slower cadence than Form 4 — 144 volume is lower and it's a
+        # softer "notice of intent" signal, not a completed transaction.
+        # Alerts directly for held positions above MIN_144_VALUE_USD, and
+        # is stored regardless so a later Form 4 sell can reference it
+        # (see form144_monitor.py).
         cron(poll_form144_filings, minute={0, 15, 30, 45}),
         # Same reasoning as 144 — a Form 3 alone doesn't alert, it just needs
         # to be on file before that owner's first Form 4 sell shows up.
@@ -1063,6 +1068,14 @@ class WorkerSettings:
         cron(poll_13f_filings, hour=7, minute=0),
         cron(sync_degiro_portfolio, hour=2, minute=0),
         cron(weekly_meta_analysis, weekday=0, hour=3, minute=0),
+        # Fixed UTC cron minutes would drift an hour off NYSE open/close
+        # across DST — instead these tick every 5 min and check the real
+        # ET wall-clock time inside the job body (daily_briefing.py), the
+        # same pattern alert_worker.py uses for its EOD soft-stop check.
+        # DailyBriefingLog dedups so only the first tick inside each day's
+        # target window actually sends.
+        cron(send_premarket_briefings, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
+        cron(send_postmarket_briefings, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
     ]
     on_startup = _worker_startup
     redis_settings = RedisSettings.from_dsn(_REDIS_URL)
