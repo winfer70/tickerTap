@@ -332,10 +332,6 @@ def format_insider_telegram(
         parts.append("")
         parts.append(f"Filing: {url}")
 
-    if reasons:
-        parts.append("")
-        parts.append("Gate: " + "; ".join(reasons))
-
     if advice:
         parts.append("")
         parts.append(advice)

@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from ..models import InsiderFiling, RuleAlert
+from .alert_cooldown import should_send_alert
 from .book_loader import load_avoid_tickers, load_books
 from .heartbeat import write_worker_heartbeat
 from .insider_briefing import (
@@ -716,6 +717,7 @@ async def run_insider_cycle(
                             (title or f"{ticker} insider {code}")[:200],
                             body,
                             prio,
+                            ticker=ticker,
                         )
                         accession_notified.add(uid)
                         stats["telegram"] += 1
@@ -777,9 +779,11 @@ async def poll_insider_filings(ctx: dict) -> dict:
                 return None
             return compute_track_record(rows, bars)
 
-        async def _notify(uid, event_type, title, body, prio):
+        async def _notify(uid, event_type, title, body, prio, ticker=None):
             if uid is None:
                 logger.warning("insider_notify_no_user", title=title)
+                return
+            if ticker and not await should_send_alert(session, uid, ticker, event_type, title):
                 return
             await notify_soft_stop(
                 db=session,
