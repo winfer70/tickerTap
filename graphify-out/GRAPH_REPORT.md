@@ -1,12 +1,12 @@
-# Graph Report - .  (2026-09-15)
+# Graph Report - .  (2026-09-17)
 
 ## Corpus Check
-- 224 files · ~0 words
+- 228 files · ~0 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3454 nodes · 11289 edges · 155 communities detected
-- Extraction: 32% EXTRACTED · 68% INFERRED · 0% AMBIGUOUS · INFERRED: 7656 edges (avg confidence: 0.5)
+- 3490 nodes · 11364 edges · 152 communities detected
+- Extraction: 32% EXTRACTED · 68% INFERRED · 0% AMBIGUOUS · INFERRED: 7688 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## God Nodes (most connected - your core abstractions)
@@ -37,31 +37,31 @@
 
 ### Community 0 - "Community 0"
 Cohesion: 0.01
-Nodes (273): WorkerSettings, load_avoid_tickers(), load_books(), _fetch_map(), cik_ticker_map.py — CIK -> ticker resolution via SEC's free company_tickers.json, Best-effort CIK -> ticker. None if unresolvable (private issuer,     stale cach, resolve_ticker(), _best_ticker() (+265 more)
+Nodes (257): load_avoid_tickers(), load_books(), _fetch_map(), cik_ticker_map.py — CIK -> ticker resolution via SEC's free company_tickers.json, Best-effort CIK -> ticker. None if unresolvable (private issuer,     stale cach, resolve_ticker(), _best_ticker(), cusip_ticker_map.py — CUSIP -> ticker resolution via the free OpenFIGI API.  F (+249 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.02
-Nodes (238): admin_check(), list_audit_logs(), list_users(), lock_account(), lock_user(), admin.py — Admin-only routes for TickerTap.  Provides endpoints for user and a, Lock or unlock a brokerage account atomically.      Eliminates duplication bet, List all registered users, ordered newest-first.      Args:         db: Async (+230 more)
+Cohesion: 0.01
+Nodes (323): admin_check(), list_audit_logs(), list_users(), lock_account(), lock_user(), _toggle_account_status(), _toggle_user_status(), unlock_account() (+315 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.02
-Nodes (266): _apply_stage_result(), _build_soft_stop_report(), _check_condition(), _check_soft_stops(), evaluate_one_soft_stop(), evaluate_price_alerts(), _fetch_daily_close(), _fetch_price() (+258 more)
+Cohesion: 0.03
+Nodes (263): _apply_stage_result(), _build_soft_stop_report(), _check_condition(), _check_soft_stops(), evaluate_one_soft_stop(), evaluate_price_alerts(), _fetch_daily_close(), _fetch_price() (+255 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.12
-Nodes (260): analyse_stock(), AnalysisResponse, approve_refinement(), ApproveRefinementRequest, _build_prompt(), _call_ollama(), _check_rules(), _compute_atr() (+252 more)
+Cohesion: 0.03
+Nodes (204): admin.py — Admin-only routes for TickerTap.  Provides endpoints for user and a, Lock or unlock a brokerage account atomically.      Eliminates duplication bet, List all registered users, ordered newest-first.      Args:         db: Async, Deactivate a user account, preventing further login.      Existing JWT tokens, Reactivate a previously locked user account.      Args:         user_id: UUID, Set an account's status to 'locked', blocking trading operations.      Args:, Restore an account's status to 'active', re-enabling trading.      Args:, Retrieve audit log entries for admin review.      Args:         user_id: Opti (+196 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.01
-Nodes (143): Exception, _get_parser(), parse(), _preprocess_kwargs(), PineScript Grammar — lark EBNF grammar for the supported PineScript subset.  D, Lazily create and return the lark parser (cached singleton).      Returns:, Result from PineScript validation.      Attributes:         valid:  True if s, Convert keyword arguments into marker-pair positional arguments.      Transfor (+135 more)
+Nodes (153): Exception, _call_indicator(), _check_stop_loss(), _compute_indicators(), _eval_comparison(), _eval_condition(), _eval_logical(), _extract_price_series() (+145 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.03
-Nodes (118): check_analyst_consensus(), analyst.py — Analyst consensus rule checker.  Fires when current price is sign, Check if price is above analyst consensus target.      Args:         ctx:, check_buckets(), buckets.py — Rule 13: Bucket allocation checker.  Fires when any bucket deviat, Check bucket allocation vs targets.      Args:         ctx: RuleContext with, check_fundamentals_health(), fundamentals.py — Fundamental health rule checker.  Checks debt-to-equity stre (+110 more)
+Cohesion: 0.2
+Nodes (186): LLMTranspileError, Raised when LLM translation or validation fails., MarketDataProvider, AuditLog, BacktestResult, Notification, PaperTrade, PaperTradeEquitySnapshot (+178 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.05
-Nodes (131): Base, _change_pct_to_score(), _check_article_outcomes(), create_scoring_rules(), export_training_data(), _fetch_outcome_prices(), get_active_rules(), get_outcome_data() (+123 more)
+Cohesion: 0.03
+Nodes (118): check_analyst_consensus(), analyst.py — Analyst consensus rule checker.  Fires when current price is sign, Check if price is above analyst consensus target.      Args:         ctx:, check_buckets(), buckets.py — Rule 13: Bucket allocation checker.  Fires when any bucket deviat, Check bucket allocation vs targets.      Args:         ctx: RuleContext with, check_fundamentals_health(), fundamentals.py — Fundamental health rule checker.  Checks debt-to-equity stre (+110 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.06
@@ -69,15 +69,15 @@ Nodes (101): _aggregate_bars(), ExchangeRateResponse, _fetch_earnings_dates_set(
 
 ### Community 8 - "Community 8"
 Cohesion: 0.03
-Nodes (87): cleanup_dead_letters(), _connect(), enqueue(), enqueue_batch(), get_pending(), increment_retries(), init_db(), mark_done() (+79 more)
+Nodes (94): BaseHTTPMiddleware, limiter.py — Shared SlowAPI rate-limiter instance for TickerTap.  Centralised, CorrelationIDMiddleware, health(), metrics(), main.py — FastAPI application entry point for TickerTap.  Configures middlewar, Validate critical configuration on startup.      Performs the following checks, Injects security headers on every response.      Provides a defence-in-depth l (+86 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.05
-Nodes (68): _assert_account_owner(), Config, HoldingOut, list_holdings(), holdings.py — Holdings (portfolio positions) routes for TickerTap.  Exposes a, Output schema for a single holding position.      Attributes:         holding, Verify the account belongs to the given user. Raises HTTP 403 if not.      Use, List holdings for the given account with pagination (P7.3).      Ownership of (+60 more)
+Cohesion: 0.03
+Nodes (87): cleanup_dead_letters(), _connect(), enqueue(), enqueue_batch(), get_pending(), increment_retries(), init_db(), mark_done() (+79 more)
 
 ### Community 10 - "Community 10"
-Cohesion: 0.04
-Nodes (66): _analyze_single_symbol(), _audit(), browse_marketplace(), clone_strategy(), _compute_exit_analysis(), _compute_score(), _compute_trend(), create_composed_strategy() (+58 more)
+Cohesion: 0.06
+Nodes (59): _assert_account_owner(), Config, HoldingOut, list_holdings(), holdings.py — Holdings (portfolio positions) routes for TickerTap.  Exposes a, Output schema for a single holding position.      Attributes:         holding, Verify the account belongs to the given user. Raises HTTP 403 if not.      Use, List holdings for the given account with pagination (P7.3).      Ownership of (+51 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.06
@@ -88,236 +88,236 @@ Cohesion: 0.08
 Nodes (31): _adx(), _atr(), _bollinger_pctb(), _build_train_data(), _ema(), _engineer_features(), FeatureClassifier, _get_top_features() (+23 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.09
-Nodes (36): Queued or completed Volume Flow Scanner job with full results.      Stores the, ScanResult, get_latest_scan(), get_scan_result(), routes/scanner.py — Volume Flow Scanner endpoints.  Exposes three routes under, Start a Volume Flow Scan in the background.      Creates a pending ScanResult, Return the most recent scan result for the current user.      Args:         d, Return a specific scan result by ID.      Args:         result_id:    UUID st (+28 more)
-
-### Community 14 - "Community 14"
-Cohesion: 0.07
-Nodes (27): BaseHTTPMiddleware, CorrelationIDMiddleware, health(), metrics(), main.py — FastAPI application entry point for TickerTap.  Configures middlewar, Validate critical configuration on startup.      Performs the following checks, Injects security headers on every response.      Provides a defence-in-depth l, Reject requests whose Content-Length exceeds MAX_REQUEST_BODY_BYTES.      Prev (+19 more)
-
-### Community 15 - "Community 15"
 Cohesion: 0.08
 Nodes (22): make_mock_item(), make_mock_watchlist(), make_scalar_count_result(), ============================================================================ TE, Tests for watchlist create, list, get, and delete operations., Valid name payload should return 201 with the new watchlist., Omitting the name field should return 422 Unprocessable Entity., User with no watchlists should receive an empty JSON array. (+14 more)
 
-### Community 16 - "Community 16"
+### Community 14 - "Community 14"
 Cohesion: 0.07
 Nodes (31): adx(), atr(), bollinger_bands(), crossover(), crossunder(), ema(), highest(), lowest() (+23 more)
 
-### Community 17 - "Community 17"
+### Community 15 - "Community 15"
 Cohesion: 0.07
 Nodes (20): make_mock_alert(), ============================================================================ TE, Symbols in lowercase should be stored and returned uppercase., An unrecognised condition value must fail Pydantic validation (422)., User already at the 50-alert cap should receive 400 Bad Request., User with 49 active alerts should be able to create one more., Tests for alert listing endpoint., User with no alerts should receive an empty JSON array. (+12 more)
 
-### Community 18 - "Community 18"
+### Community 16 - "Community 16"
 Cohesion: 0.09
 Nodes (12): ============================================================================ TE, _rows_result(), _session_cm(), test_fetch_failure_returns_gracefully(), test_no_tracked_tickers_skips_fetch(), test_skips_already_stored_ticker_settlement_pair(), test_stores_matched_rows_and_dedupes(), TestFindLatestSettlementDate (+4 more)
 
-### Community 19 - "Community 19"
-Cohesion: 0.1
-Nodes (27): _call_indicator(), _check_stop_loss(), _compute_indicators(), _eval_comparison(), _eval_condition(), _eval_logical(), _extract_price_series(), _generate_signals() (+19 more)
-
-### Community 20 - "Community 20"
+### Community 17 - "Community 17"
 Cohesion: 0.1
 Nodes (10): TelegramLinkRequest, ============================================================================ TE, This endpoint must work for a not-yet-registered visitor., A regular user's own JWT must not be able to call this — only         the bot's, TestCheckTelegramInvite, TestCreateTelegramInvite, TestLinkTelegramChat, TestRegisterWithTelegramInvite (+2 more)
 
-### Community 21 - "Community 21"
+### Community 18 - "Community 18"
 Cohesion: 0.09
 Nodes (17): make_mock_strategy(), ============================================================================ TE, GET /strategies without auth should return 401 or 403., Tests for single-strategy retrieval., Fetching an owned strategy by ID should return 200., Fetching a non-existent strategy should return 404., System strategies should be accessible to any authenticated user., Tests for the backtest queuing endpoint. (+9 more)
 
-### Community 22 - "Community 22"
+### Community 19 - "Community 19"
 Cohesion: 0.1
 Nodes (25): _et(), TEST SUITE: Scanner Session Detection MODULE UNDER TEST: app.trading.scanner_se, 4:00 PM ET is at/after the regular close; elapsed weight must be 1.0., project_daily_volume must return intraday_vol unchanged when elapsed_weight == 0, At 50% session elapsed, projected volume should be double the intraday volume., Build a timezone-aware datetime in US/Eastern for use in tests.      Args:, Saturday noon ET must yield 'closed' regardless of time., Monday 8:00 AM ET is within pre-market hours (4:00–9:30 AM). (+17 more)
 
-### Community 23 - "Community 23"
+### Community 20 - "Community 20"
 Cohesion: 0.12
 Nodes (23): check_webhook_host_safe(), _fire_webhooks(), _insert_notification(), _is_disallowed_ip(), notify(), notify_soft_stop(), trading/notifications.py — Unified notification dispatcher.  Delivers notifica, Send a notification through all enabled channels.      Always creates an in-ap (+15 more)
 
-### Community 24 - "Community 24"
+### Community 21 - "Community 21"
 Cohesion: 0.15
 Nodes (17): FakePos, TEST SUITE: Two-stage soft-stop alerts MODULE UNDER TEST: app.trading.alert_wor, Mirrors modify_position: any actual soft-stop change clears stage state., Do not hit yfinance / news tables during unit tests., _session_with(), _stub_soft_stop_report(), test_both_channels_fail_does_not_mark_date(), test_changing_soft_stop_value_resets_stage_dates() (+9 more)
 
-### Community 25 - "Community 25"
+### Community 22 - "Community 22"
 Cohesion: 0.13
 Nodes (17): _api_get(), _api_post(), cmd_alerts(), cmd_analyze(), cmd_approve_refinement(), cmd_buy(), cmd_link(), cmd_pnl() (+9 more)
 
-### Community 26 - "Community 26"
+### Community 23 - "Community 23"
 Cohesion: 0.09
 Nodes (6): ============================================================================ TE, TestCheckWebhookHostSafe, TestFireWebhooksSendTimeCheck, TestIsDisallowedIp, TestRequireSafeWebhookUrl, TestValidateWebhookUrlShape
 
-### Community 27 - "Community 27"
+### Community 24 - "Community 24"
 Cohesion: 0.17
 Nodes (21): _action_button(), email.py — Email sending utilities for TickerTap.  Provides a generic send_ema, Generate a styled call-to-action button for emails.      Args:         url: T, Send an email via the configured SMTP server.      Args:         to_email: Re, Send a password reset email with a one-time link.      Args:         to_email, Send an email verification link for new account registration.      Args:, Send a verification email to the NEW email address for an email change.      A, Send an account reactivation email with a one-time link.      Args:         t (+13 more)
 
-### Community 28 - "Community 28"
-Cohesion: 0.15
-Nodes (21): add_position(), adjust_cash(), _build_performance_series(), bulk_import_positions(), _compute_period_days(), create_portfolio(), delete_portfolio(), delete_position() (+13 more)
+### Community 25 - "Community 25"
+Cohesion: 0.21
+Nodes (21): create_template(), delete_template(), get_template(), _get_template_or_404(), list_templates(), routes/chart_templates.py — Chart Template CRUD API endpoints.  Provides CRUD, Partially update a chart template (ownership enforced)., Delete a chart template (ownership enforced). (+13 more)
 
-### Community 29 - "Community 29"
+### Community 26 - "Community 26"
 Cohesion: 0.11
 Nodes (21): _aggregate_5min(), archive_intraday(), _daily_downsample(), downsample_daily(), _fetch_and_store_bars(), _get_active_symbols(), _is_market_open(), trading/archiver.py — Intraday data archiver worker.  Background worker that: (+13 more)
 
-### Community 30 - "Community 30"
+### Community 27 - "Community 27"
+Cohesion: 0.14
+Nodes (13): _book(), test_gate_blocks_10b5(), test_gate_blocks_avoid_list(), test_gate_blocks_sector_cap(), test_gate_blocks_tiny_notional(), test_gate_critical_de_blocks_buy(), test_gate_officer_buy_passes(), test_gate_sell_held_10b5_small_stake_is_info() (+5 more)
+
+### Community 28 - "Community 28"
 Cohesion: 0.15
 Nodes (19): _get_dividend_zones(), _get_earnings_zones(), _get_fomc_zones(), get_no_trade_zones(), _get_opex_dates(), _get_opex_zones(), is_in_no_trade_zone(), NoTradeZone (+11 more)
 
-### Community 31 - "Community 31"
+### Community 29 - "Community 29"
 Cohesion: 0.12
 Nodes (13): _get_cached(), _is_market_open(), YFinance Provider — MarketDataProvider implementation backed by yfinance.  Wra, Fetch OHLCV bars from yfinance and return normalised OHLCVBars.          Args:, Fetch the latest quote for *symbol* from yfinance.          Args:, Search for symbols matching *query* via yfinance.          Args:, Synchronous OHLCV fetch from yfinance.          Args:             sym:, Synchronous quote fetch from yfinance.          Args:             sym: Upper- (+5 more)
 
-### Community 32 - "Community 32"
+### Community 30 - "Community 30"
+Cohesion: 0.15
+Nodes (17): _build_user_prompt(), _call_ollama(), _extract_call_name(), llm_transpile(), _parse_llm_response(), PineScript LLM Fallback — translates unsupported PineScript via Ollama.  When, Parse and whitelist-walk the LLM-generated Python code.      Rejects any const, Recursively validate an AST node and all its children.      Args:         nod (+9 more)
+
+### Community 31 - "Community 31"
 Cohesion: 0.15
 Nodes (17): _call_indicator(), _compute_composed_indicators(), _eval_expression(), _eval_node(), _generate_composed_signals(), Strategy Composition Engine — evaluates a graph of indicator nodes and boolean, Recursively validate every node in the expression AST.      Args:         nod, Evaluate a pre-validated expression against a variable namespace.      Args: (+9 more)
 
-### Community 33 - "Community 33"
+### Community 32 - "Community 32"
 Cohesion: 0.11
 Nodes (17): auth_client(), make_all_result(), make_scalar_count_result(), make_scalar_result(), make_scalars_result(), mock_db_session(), mock_user(), ============================================================================ Sh (+9 more)
 
-### Community 34 - "Community 34"
+### Community 33 - "Community 33"
 Cohesion: 0.11
 Nodes (11): ============================================================================ TE, Integration tests for listing the current user's accounts., No accounts for this user should return an empty JSON array., A user with one account should receive a list of length 1., Requests without authentication should be rejected (401 or 403)., Integration tests for account creation endpoint., Valid payload should return 201 with account data., Omitting the required account_type field must return 422. (+3 more)
 
-### Community 35 - "Community 35"
+### Community 34 - "Community 34"
 Cohesion: 0.25
 Nodes (17): _filed_result(), _held_result(), _mock_request(), ============================================================================ TE, Mock for the open-positions query: result.all() -> [(ticker,), ...]., Mock for the Form 4 filers query: result.all() ->     [(ticker, latest_transact, test_blank_tickers_skipped(), test_capped_at_watch_ticker_limit() (+9 more)
 
-### Community 36 - "Community 36"
+### Community 35 - "Community 35"
 Cohesion: 0.12
 Nodes (5): ============================================================================ TE, TestInfotableXmlUrlFromIndexHtml, TestParse13fAtomEntryTitle, TestParse13fAtomFeed, TestParse13fInfotableXml
 
-### Community 37 - "Community 37"
+### Community 36 - "Community 36"
 Cohesion: 0.22
 Nodes (15): advice_lines(), format_advice_block(), load_investment_rules(), _news_bias(), _position_phase_note(), briefing_advice.py — Template advice from investment_rules.json + book.  No LL, Two-level stop line using the position's actual stored levels rather     than a, Squeeze/crowding context from FINRA's biweekly short-interest data —     a fres (+7 more)
 
-### Community 38 - "Community 38"
+### Community 37 - "Community 37"
 Cohesion: 0.17
 Nodes (15): analyse_with_ollama(), build_analysis_prompt(), compute_statistics(), fetch_outcomes(), main(), _parse_analysis_json(), post_rules(), learner.py — TickerTap scoring accuracy analyser for the remote worker host. (+7 more)
 
-### Community 39 - "Community 39"
+### Community 38 - "Community 38"
 Cohesion: 0.17
 Nodes (15): build_learning_prompt(), compute_strategy_stats(), fetch_backtest_history(), learn_with_ollama(), main(), _parse_learning_json(), post_strategy_rules(), strategy_learner.py — Strategy performance learner for the remote worker host. (+7 more)
 
-### Community 40 - "Community 40"
+### Community 39 - "Community 39"
 Cohesion: 0.17
 Nodes (15): build_research_prompt(), fetch_recent_backtests(), fetch_regime_summary(), main(), _parse_research_json(), post_recommendations(), strategy_researcher.py — Strategy research agent for the remote worker host., Fetch current market regime summary from Server A.      Returns:         Dict (+7 more)
 
-### Community 41 - "Community 41"
+### Community 40 - "Community 40"
 Cohesion: 0.17
 Nodes (8): _atom(), _FakeFetcher, ============================================================================ TE, _session_cm(), test_poll_continues_after_per_entry_error(), test_poll_skips_already_stored_accession(), test_poll_stores_rows_from_both_feeds(), TestGetRecentBeneficialOwnership
 
-### Community 42 - "Community 42"
+### Community 41 - "Community 41"
 Cohesion: 0.22
 Nodes (11): atr_based(), fixed_dollar(), fixed_percentage(), fractional_kelly(), kelly(), PositionSizer, engine/risk.py — Position sizing and risk management models.  Provides the ``P, Automatically choose and apply the best sizing model.          Prefers ATR-bas (+3 more)
 
-### Community 43 - "Community 43"
+### Community 42 - "Community 42"
 Cohesion: 0.18
 Nodes (7): _FakeFetcher, ============================================================================ TE, _session_cm(), test_poll_continues_after_per_entry_error(), test_poll_skips_already_stored_accession(), test_poll_stores_new_statement(), TestGetForm3Baseline
 
-### Community 44 - "Community 44"
+### Community 43 - "Community 43"
 Cohesion: 0.19
 Nodes (13): _make_redis_mock(), TEST SUITE: Worker Metrics Endpoint MODULE UNDER TEST: app.routes.metrics TEST, Workers should report 'no_heartbeat' when the Redis key does not exist.      R, Endpoint should return {error: ...} gracefully when Redis is down.      aiored, Response must contain exactly the three known arq workers as top-level keys., Build a mock aioredis client with pre-configured async methods.      Args:, All workers should report 'healthy' when their heartbeat is recent.      A hea, All workers should report 'stale' when their heartbeat is 2000 s old.      200 (+5 more)
 
-### Community 45 - "Community 45"
+### Community 44 - "Community 44"
 Cohesion: 0.14
 Nodes (9): ============================================================================ TE, Tests for the positions listing endpoint., User with no accounts should receive an empty positions list., GET /positions without auth should return 401 or 403., Tests for the portfolio summary endpoint., User with no accounts should receive a zero-value summary., GET /summary without auth should return 401 or 403., TestGetPositions (+1 more)
 
-### Community 46 - "Community 46"
+### Community 45 - "Community 45"
 Cohesion: 0.14
 Nodes (4): ============================================================================ TE, 13G's per-person cover-page block has no CIK field at all —         must fall b, TestParseSchedule13D, TestParseSchedule13G
 
-### Community 47 - "Community 47"
+### Community 46 - "Community 46"
 Cohesion: 0.38
 Nodes (12): _mock_position(), _positions_result(), ============================================================================ TE, test_different_users_get_separate_books(), test_multiple_watchlists_for_same_user_are_unioned(), test_no_users_returns_empty_books(), test_portfolio_only_user_has_empty_watchlist_tickers(), test_user_with_both_gets_both_sets_populated() (+4 more)
 
-### Community 48 - "Community 48"
+### Community 47 - "Community 47"
 Cohesion: 0.19
 Nodes (7): _FakeFetcher, ============================================================================ TE, _session_cm(), test_poll_resolves_cusips_and_filters_to_tracked_tickers(), test_poll_skips_already_stored_accession(), test_poll_skips_when_no_tracked_tickers(), TestGetRecent13fHolders
 
-### Community 49 - "Community 49"
+### Community 48 - "Community 48"
 Cohesion: 0.19
 Nodes (7): _FakeFetcher, ============================================================================ TE, _session_cm(), test_poll_filters_to_tracked_tickers_only(), test_poll_skips_already_stored_accession(), test_poll_skips_when_no_tracked_tickers(), TestGetRecent8kFilings
 
-### Community 50 - "Community 50"
+### Community 49 - "Community 49"
 Cohesion: 0.2
 Nodes (6): _fill_profile_fields(), ============================================================================ TE, auth_client's shared mock_user fixture only sets user_id/email/is_active/     i, Regression: sidebar_collapsed was documented in the schema's         docstring, TestGetProfileTutorialDefault, TestUpdatePreferencesTutorial
 
-### Community 51 - "Community 51"
+### Community 50 - "Community 50"
 Cohesion: 0.27
 Nodes (7): _mock_response(), ============================================================================ TE, test_network_error_falls_back_to_stale_cache_instead_of_raising(), test_resolves_ticker_for_known_cik(), test_second_call_within_ttl_does_not_refetch(), test_strips_leading_zeros_from_cik(), test_unknown_cik_returns_none()
 
-### Community 52 - "Community 52"
+### Community 51 - "Community 51"
 Cohesion: 0.29
 Nodes (8): _mock_response(), ============================================================================ TE, test_batches_over_100_cusips_into_multiple_requests(), test_dedupes_repeated_cusips_into_one_batch(), test_falls_back_to_first_entry_without_us_listing(), test_resolves_multiple_cusips_preferring_us_exchange(), test_skips_cusips_with_error_response(), test_skips_cusips_with_warning_response()
 
-### Community 53 - "Community 53"
+### Community 52 - "Community 52"
 Cohesion: 0.29
 Nodes (9): BreakerStatus, check_circuit_breaker(), check_drawdown(), engine/circuit_breaker.py — Drawdown circuit breaker for strategy risk control., Check and enforce the circuit breaker for a strategy.      Loads recent backte, Execute circuit breaker trip: deactivate signals, notify, and log.      Args:, Result of a circuit breaker check.      Attributes:         tripped:        T, Check if the equity curve's drawdown exceeds the threshold.      Computes the (+1 more)
 
-### Community 54 - "Community 54"
+### Community 53 - "Community 53"
 Cohesion: 0.27
 Nodes (9): DecayResult, detect_decay(), detect_decay_for_strategy(), engine/decay.py — Strategy performance decay detection.  Monitors rolling stra, Load recent backtest results for a strategy and check for decay.      Queries, Compute rolling annualised Sharpe ratios.      Args:         returns:       B, Result of a strategy decay check.      Attributes:         is_decaying:    Tr, Detect performance decay from an equity curve.      Computes rolling Sharpe ra (+1 more)
 
-### Community 55 - "Community 55"
+### Community 54 - "Community 54"
 Cohesion: 0.24
 Nodes (9): get_elapsed_weight(), get_market_session(), get_session_context(), project_daily_volume(), scanner_session.py — Market session detection and volume projection for the scan, Return the current market session label for a given Eastern-time datetime., Return the fraction of the regular NYSE session elapsed at the given time., Project a full-day volume estimate from intraday volume and elapsed weight. (+1 more)
 
-### Community 56 - "Community 56"
+### Community 55 - "Community 55"
 Cohesion: 0.2
 Nodes (2): ============================================================================ TE, TestMdyToIso
 
-### Community 57 - "Community 57"
-Cohesion: 0.51
-Nodes (9): _make_db(), _make_portfolio(), _make_position(), test_deduct_cash_exact_decimal(), test_exact_decimal_arithmetic_no_float_drift(), test_full_sell_credit_cash_exact_decimal(), test_insufficient_cash_raises_400_and_does_not_mutate(), test_insufficient_funds_raises_400_and_does_not_mutate() (+1 more)
+### Community 56 - "Community 56"
+Cohesion: 0.22
+Nodes (1): Tests for redesigned insider Telegram briefing (10b5-1, stake %, pattern, concer
 
-### Community 58 - "Community 58"
+### Community 57 - "Community 57"
 Cohesion: 0.22
 Nodes (5): _dedupe_and_sort(), Normalized Data Service — single entry point for strategy data consumption.  S, Fetch aligned OHLCV data at multiple intervals.          Intraday intervals ar, Read bars from the intraday_bars TimescaleDB hypertable.          Args:, Fetch normalised OHLCV bars for a single symbol and interval.          For int
 
-### Community 59 - "Community 59"
+### Community 58 - "Community 58"
 Cohesion: 0.22
 Nodes (5): ============================================================================ TE, noSecuritiesOwned=1 filings have an empty nonDerivativeTable —     should parse, A director might hold both direct and indirect shares — both     nonDerivativeH, test_sums_multiple_holdings(), test_zero_holdings_when_no_securities_owned()
 
-### Community 60 - "Community 60"
+### Community 59 - "Community 59"
 Cohesion: 0.22
 Nodes (3): ============================================================================ TE, Grants/withholding (A/F) shouldn't count toward sample_size or be     scored —, test_non_ps_codes_are_ignored()
 
-### Community 61 - "Community 61"
+### Community 60 - "Community 60"
 Cohesion: 0.36
 Nodes (7): _build_doc(), _get_collection_id(), query_similar(), chromadb_client.py — ChromaDB client for trade analysis embeddings.  Uses raw, Find similar past analyses with known outcomes for RAG context., Upsert a trade analysis embedding. Returns chromadb_id or None on failure., store_analysis()
 
-### Community 62 - "Community 62"
+### Community 61 - "Community 61"
 Cohesion: 0.32
 Nodes (7): generate_signals(), indicator_outputs(), ADX Trend Strategy — enter on strong trend confirmation via ADX.  Enter long w, Expose indicator series for the composition engine.      Args:         bars:, Wilder's smoothing (used in ADX/DI calculations).      Args:         values:, Generate entry/exit signals based on ADX trend strength.      Args:         b, _wilder_smooth()
 
-### Community 63 - "Community 63"
+### Community 62 - "Community 62"
 Cohesion: 0.32
 Nodes (7): _ema(), generate_signals(), indicator_outputs(), EMA Crossover Strategy — trend-following using exponential moving averages.  F, Compute exponential moving average series.      Args:         closes: List of, Generate entry/exit signals based on EMA crossover.      Args:         bars:, Expose indicator series for the composition engine.      Args:         bars:
 
-### Community 64 - "Community 64"
+### Community 63 - "Community 63"
 Cohesion: 0.32
 Nodes (7): generate_signals(), indicator_outputs(), _period_high_low(), Ichimoku Cloud Strategy — trend-following using Ichimoku Kinko Hyo components., Expose indicator series for the composition engine.      Args:         bars:, Compute highest high and lowest low over a lookback window.      Args:, Generate entry/exit signals based on Ichimoku Cloud.      Args:         bars:
 
-### Community 65 - "Community 65"
+### Community 64 - "Community 64"
 Cohesion: 0.32
 Nodes (7): _ema(), generate_signals(), indicator_outputs(), MACD Crossover Strategy — trend-following using MACD line/signal crossovers., Expose indicator series for the composition engine.      Args:         bars:, Compute EMA series (SMA-seeded)., Generate entry/exit signals based on MACD crossover.      Args:         bars:
 
-### Community 66 - "Community 66"
+### Community 65 - "Community 65"
 Cohesion: 0.32
 Nodes (7): generate_signals(), indicator_outputs(), RSI Mean Reversion Strategy — fade overbought/oversold RSI readings.  Enter lo, Expose indicator series for the composition engine.      Args:         bars:, Compute RSI series using Wilder's smoothing.      Args:         closes: List, Generate entry/exit signals based on RSI mean reversion.      Args:         b, _rsi()
 
-### Community 67 - "Community 67"
+### Community 66 - "Community 66"
 Cohesion: 0.32
 Nodes (7): generate_signals(), indicator_outputs(), SMA Crossover Strategy — trend-following using simple moving average crossovers., Compute simple moving average series.      Args:         closes: List of clos, Generate entry/exit signals based on SMA crossover.      Args:         bars:, Expose indicator series for the composition engine.      Args:         bars:, _sma()
 
-### Community 68 - "Community 68"
+### Community 67 - "Community 67"
 Cohesion: 0.32
 Nodes (7): _compute_vwap(), generate_signals(), indicator_outputs(), VWAP Bounce Strategy — intraday mean reversion around VWAP.  Enter long when p, Compute cumulative VWAP series.      Args:         bars: Chronological OHLCV, Generate entry/exit signals based on VWAP bounce.      Args:         bars:, Expose indicator series for the composition engine.      Args:         bars:
 
-### Community 69 - "Community 69"
+### Community 68 - "Community 68"
 Cohesion: 0.29
 Nodes (2): apiFetch(), _tryRefreshToken()
 
-### Community 70 - "Community 70"
+### Community 69 - "Community 69"
 Cohesion: 0.29
 Nodes (0): 
+
+### Community 70 - "Community 70"
+Cohesion: 0.33
+Nodes (5): env.py — Alembic migration environment for TickerTap.  DATABASE_URL environmen, Run migrations in 'offline' mode (no live DB connection required).      Genera, Run migrations against a live database connection., run_migrations_offline(), run_migrations_online()
 
 ### Community 71 - "Community 71"
 Cohesion: 0.33
@@ -513,231 +513,209 @@ Nodes (1): Store "Analyze with AI" (Kamilo) requests/verdicts from the Insider p
 
 ### Community 119 - "Community 119"
 Cohesion: 0.5
-Nodes (3): main(), worker_healthcheck.py — Docker HEALTHCHECK script for TickerTap arq workers., Entry point: parse args, query Redis, print status, exit with code.      Reads
+Nodes (1): Per-(user, ticker, event_type) alert cooldown to cut insider-alert spam.
 
 ### Community 120 - "Community 120"
-Cohesion: 1.0
-Nodes (1): dependencies.py — Shared FastAPI dependencies for TickerTap.  Re-exports the c
+Cohesion: 0.5
+Nodes (1): Dedup log for pre-market/post-market Telegram briefings.
 
 ### Community 121 - "Community 121"
-Cohesion: 1.0
-Nodes (1): Fetch the latest quote for *symbol*.          Args:             symbol: Ticke
+Cohesion: 0.5
+Nodes (3): main(), worker_healthcheck.py — Docker HEALTHCHECK script for TickerTap arq workers., Entry point: parse args, query Redis, print status, exit with code.      Reads
 
 ### Community 122 - "Community 122"
 Cohesion: 1.0
-Nodes (1): Return the provider's supported interval list.          Returns:
+Nodes (1): dependencies.py — Shared FastAPI dependencies for TickerTap.  Re-exports the c
 
 ### Community 123 - "Community 123"
 Cohesion: 1.0
-Nodes (1): Return the list of candle intervals this provider supports.          Returns:
+Nodes (1): Strategy Templates — pre-built system strategies seeded into the database.  Th
 
 ### Community 124 - "Community 124"
 Cohesion: 1.0
-Nodes (1): Return maximum lookback for *interval*.          Args:             interval:
+Nodes (0): 
 
 ### Community 125 - "Community 125"
 Cohesion: 1.0
-Nodes (1): Synchronous symbol search via yfinance.          Args:             query: Fre
+Nodes (0): 
 
 ### Community 126 - "Community 126"
 Cohesion: 1.0
-Nodes (1): Strategy Templates — pre-built system strategies seeded into the database.  Th
+Nodes (0): 
 
 ### Community 127 - "Community 127"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): Enforce at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character.
 
 ### Community 128 - "Community 128"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): Enforce at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character.
 
 ### Community 129 - "Community 129"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): Reject non-positive portfolio values.
 
 ### Community 130 - "Community 130"
 Cohesion: 1.0
-Nodes (1): Enforce at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character.
+Nodes (1): Allow only known mode values.
 
 ### Community 131 - "Community 131"
 Cohesion: 1.0
-Nodes (1): Enforce at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character.
+Nodes (1): Reject state values outside the allowed set.
 
 ### Community 132 - "Community 132"
 Cohesion: 1.0
-Nodes (1): Reject non-positive portfolio values.
+Nodes (1): Reject schedule values outside the allowed set.
 
 ### Community 133 - "Community 133"
 Cohesion: 1.0
-Nodes (1): Allow only known mode values.
+Nodes (1): Adjust price for slippage.          Entries slip against you (buy higher, sell
 
 ### Community 134 - "Community 134"
 Cohesion: 1.0
-Nodes (1): Reject state values outside the allowed set.
+Nodes (1): Build a TradeRecord from an open position and its exit.          Args:
 
 ### Community 135 - "Community 135"
 Cohesion: 1.0
-Nodes (1): Reject schedule values outside the allowed set.
+Nodes (1): Size a position by risking a fixed percentage of the account.          The num
 
 ### Community 136 - "Community 136"
 Cohesion: 1.0
-Nodes (1): Adjust price for slippage.          Entries slip against you (buy higher, sell
+Nodes (1): Size a position by risking a fixed dollar amount.          Args:
 
 ### Community 137 - "Community 137"
 Cohesion: 1.0
-Nodes (1): Build a TradeRecord from an open position and its exit.          Args:
+Nodes (1): Full Kelly criterion — optimal fraction of account to wager.          Formula:
 
 ### Community 138 - "Community 138"
 Cohesion: 1.0
-Nodes (1): Size a position by risking a fixed percentage of the account.          The num
+Nodes (1): Fractional Kelly — conservative variant.          Multiplies the full Kelly fr
 
 ### Community 139 - "Community 139"
 Cohesion: 1.0
-Nodes (1): Size a position by risking a fixed dollar amount.          Args:
+Nodes (1): ATR-based position sizing.          Uses Average True Range to set a volatilit
 
 ### Community 140 - "Community 140"
 Cohesion: 1.0
-Nodes (1): Full Kelly criterion — optimal fraction of account to wager.          Formula:
+Nodes (1): Fetch the latest quote for *symbol*.          Args:             symbol: Ticke
 
 ### Community 141 - "Community 141"
 Cohesion: 1.0
-Nodes (1): Fractional Kelly — conservative variant.          Multiplies the full Kelly fr
+Nodes (1): Return the list of bar intervals this provider supports.          Returns:
 
 ### Community 142 - "Community 142"
 Cohesion: 1.0
-Nodes (1): ATR-based position sizing.          Uses Average True Range to set a volatilit
+Nodes (1): Return the maximum historical lookback for *interval*.          Args:
 
 ### Community 143 - "Community 143"
 Cohesion: 1.0
-Nodes (1): Fetch the latest quote for *symbol*.          Args:             symbol: Ticke
+Nodes (1): Remove duplicate timestamps and sort chronologically.          Args:
 
 ### Community 144 - "Community 144"
 Cohesion: 1.0
-Nodes (1): Return the list of bar intervals this provider supports.          Returns:
+Nodes (1): Check if NYSE is in regular trading hours.
 
 ### Community 145 - "Community 145"
 Cohesion: 1.0
-Nodes (1): Return the maximum historical lookback for *interval*.          Args:
+Nodes (1): Return a numeric sort key so intervals order from shortest to longest.
 
 ### Community 146 - "Community 146"
 Cohesion: 1.0
-Nodes (1): Remove duplicate timestamps and sort chronologically.          Args:
+Nodes (1): The key regression this test guards: before the watchlist join,         a user
 
 ### Community 147 - "Community 147"
 Cohesion: 1.0
-Nodes (1): Check if NYSE is in regular trading hours.
+Nodes (1): Watchlist tickers have no shares/cost basis — they must not be         folded i
 
 ### Community 148 - "Community 148"
 Cohesion: 1.0
-Nodes (1): Return a numeric sort key so intervals order from shortest to longest.
+Nodes (0): 
 
 ### Community 149 - "Community 149"
 Cohesion: 1.0
-Nodes (1): The key regression this test guards: before the watchlist join,         a user
+Nodes (0): 
 
 ### Community 150 - "Community 150"
 Cohesion: 1.0
-Nodes (1): Watchlist tickers have no shares/cost basis — they must not be         folded i
+Nodes (0): 
 
 ### Community 151 - "Community 151"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 152 - "Community 152"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 153 - "Community 153"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 154 - "Community 154"
-Cohesion: 1.0
-Nodes (0): 
-
 ## Knowledge Gaps
-- **823 isolated node(s):** `env.py — Alembic migration environment for TickerTap.  DATABASE_URL environmen`, `Run migrations in 'offline' mode (no live DB connection required).      Genera`, `Run migrations against a live database connection.`, `initial  Revision ID: 0001_initial Revises: Create Date: 2026-01-09 00:00:00`, `password reset tokens  Revision ID: 0002_password_reset_tokens Revises: 0001_` (+818 more)
+- **827 isolated node(s):** `env.py — Alembic migration environment for TickerTap.  DATABASE_URL environmen`, `Run migrations in 'offline' mode (no live DB connection required).      Genera`, `Run migrations against a live database connection.`, `initial  Revision ID: 0001_initial Revises: Create Date: 2026-01-09 00:00:00`, `password reset tokens  Revision ID: 0002_password_reset_tokens Revises: 0001_` (+822 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 120`** (2 nodes): `dependencies.py`, `dependencies.py — Shared FastAPI dependencies for TickerTap.  Re-exports the c`
+- **Thin community `Community 122`** (2 nodes): `dependencies.py`, `dependencies.py — Shared FastAPI dependencies for TickerTap.  Re-exports the c`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 121`** (2 nodes): `.get_quote()`, `Fetch the latest quote for *symbol*.          Args:             symbol: Ticke`
+- **Thin community `Community 123`** (2 nodes): `templates.py`, `Strategy Templates — pre-built system strategies seeded into the database.  Th`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 122`** (2 nodes): `.get_supported_intervals()`, `Return the provider's supported interval list.          Returns:`
+- **Thin community `Community 124`** (2 nodes): `eslint.config.js`, `globals.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 123`** (2 nodes): `Return the list of candle intervals this provider supports.          Returns:`, `.get_supported_intervals()`
+- **Thin community `Community 125`** (2 nodes): `useContextPopup.js`, `useContextPopup()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 124`** (2 nodes): `Return maximum lookback for *interval*.          Args:             interval:`, `.get_max_history()`
+- **Thin community `Community 126`** (2 nodes): `useKeyboardShortcuts.js`, `useKeyboardShortcuts()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 125`** (2 nodes): `Synchronous symbol search via yfinance.          Args:             query: Fre`, `._search_sync()`
+- **Thin community `Community 127`** (1 nodes): `Enforce at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 126`** (2 nodes): `templates.py`, `Strategy Templates — pre-built system strategies seeded into the database.  Th`
+- **Thin community `Community 128`** (1 nodes): `Enforce at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 127`** (2 nodes): `eslint.config.js`, `globals.js`
+- **Thin community `Community 129`** (1 nodes): `Reject non-positive portfolio values.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 128`** (2 nodes): `useContextPopup.js`, `useContextPopup()`
+- **Thin community `Community 130`** (1 nodes): `Allow only known mode values.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 129`** (2 nodes): `useKeyboardShortcuts.js`, `useKeyboardShortcuts()`
+- **Thin community `Community 131`** (1 nodes): `Reject state values outside the allowed set.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 130`** (1 nodes): `Enforce at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character.`
+- **Thin community `Community 132`** (1 nodes): `Reject schedule values outside the allowed set.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 131`** (1 nodes): `Enforce at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character.`
+- **Thin community `Community 133`** (1 nodes): `Adjust price for slippage.          Entries slip against you (buy higher, sell`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 132`** (1 nodes): `Reject non-positive portfolio values.`
+- **Thin community `Community 134`** (1 nodes): `Build a TradeRecord from an open position and its exit.          Args:`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 133`** (1 nodes): `Allow only known mode values.`
+- **Thin community `Community 135`** (1 nodes): `Size a position by risking a fixed percentage of the account.          The num`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 134`** (1 nodes): `Reject state values outside the allowed set.`
+- **Thin community `Community 136`** (1 nodes): `Size a position by risking a fixed dollar amount.          Args:`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 135`** (1 nodes): `Reject schedule values outside the allowed set.`
+- **Thin community `Community 137`** (1 nodes): `Full Kelly criterion — optimal fraction of account to wager.          Formula:`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 136`** (1 nodes): `Adjust price for slippage.          Entries slip against you (buy higher, sell`
+- **Thin community `Community 138`** (1 nodes): `Fractional Kelly — conservative variant.          Multiplies the full Kelly fr`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 137`** (1 nodes): `Build a TradeRecord from an open position and its exit.          Args:`
+- **Thin community `Community 139`** (1 nodes): `ATR-based position sizing.          Uses Average True Range to set a volatilit`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 138`** (1 nodes): `Size a position by risking a fixed percentage of the account.          The num`
+- **Thin community `Community 140`** (1 nodes): `Fetch the latest quote for *symbol*.          Args:             symbol: Ticke`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 139`** (1 nodes): `Size a position by risking a fixed dollar amount.          Args:`
+- **Thin community `Community 141`** (1 nodes): `Return the list of bar intervals this provider supports.          Returns:`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 140`** (1 nodes): `Full Kelly criterion — optimal fraction of account to wager.          Formula:`
+- **Thin community `Community 142`** (1 nodes): `Return the maximum historical lookback for *interval*.          Args:`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 141`** (1 nodes): `Fractional Kelly — conservative variant.          Multiplies the full Kelly fr`
+- **Thin community `Community 143`** (1 nodes): `Remove duplicate timestamps and sort chronologically.          Args:`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 142`** (1 nodes): `ATR-based position sizing.          Uses Average True Range to set a volatilit`
+- **Thin community `Community 144`** (1 nodes): `Check if NYSE is in regular trading hours.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 143`** (1 nodes): `Fetch the latest quote for *symbol*.          Args:             symbol: Ticke`
+- **Thin community `Community 145`** (1 nodes): `Return a numeric sort key so intervals order from shortest to longest.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 144`** (1 nodes): `Return the list of bar intervals this provider supports.          Returns:`
+- **Thin community `Community 146`** (1 nodes): `The key regression this test guards: before the watchlist join,         a user`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 145`** (1 nodes): `Return the maximum historical lookback for *interval*.          Args:`
+- **Thin community `Community 147`** (1 nodes): `Watchlist tickers have no shares/cost basis — they must not be         folded i`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 146`** (1 nodes): `Remove duplicate timestamps and sort chronologically.          Args:`
+- **Thin community `Community 148`** (1 nodes): `setup.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 147`** (1 nodes): `Check if NYSE is in regular trading hours.`
+- **Thin community `Community 149`** (1 nodes): `chartStyles.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 148`** (1 nodes): `Return a numeric sort key so intervals order from shortest to longest.`
+- **Thin community `Community 150`** (1 nodes): `shared.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 149`** (1 nodes): `The key regression this test guards: before the watchlist join,         a user`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 150`** (1 nodes): `Watchlist tickers have no shares/cost basis — they must not be         folded i`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 151`** (1 nodes): `setup.js`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 152`** (1 nodes): `chartStyles.js`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 153`** (1 nodes): `shared.js`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 154`** (1 nodes): `vite.config.js`
+- **Thin community `Community 151`** (1 nodes): `vite.config.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `User` connect `Community 1` to `Community 0`, `Community 2`, `Community 3`, `Community 6`, `Community 20`, `Community 23`?**
-  _High betweenness centrality (0.052) - this node is a cross-community bridge._
-- **Why does `WorkerSettings` connect `Community 0` to `Community 8`, `Community 1`, `Community 2`, `Community 3`?**
+- **Why does `User` connect `Community 3` to `Community 0`, `Community 1`, `Community 2`, `Community 5`, `Community 17`, `Community 20`?**
+  _High betweenness centrality (0.051) - this node is a cross-community bridge._
+- **Why does `WorkerSettings` connect `Community 0` to `Community 9`, `Community 2`, `Community 3`, `Community 5`?**
   _High betweenness centrality (0.036) - this node is a cross-community bridge._
-- **Why does `RuleContext` connect `Community 5` to `Community 4`, `Community 6`?**
-  _High betweenness centrality (0.036) - this node is a cross-community bridge._
+- **Why does `RuleContext` connect `Community 6` to `Community 1`, `Community 4`?**
+  _High betweenness centrality (0.035) - this node is a cross-community bridge._
 - **Are the 191 inferred relationships involving `User` (e.g. with `admin.py — Admin-only routes for TickerTap.  Provides endpoints for user and a` and `Return 200 if the caller is an admin, else 403 from the dependency.      The f`) actually correct?**
   _`User` has 191 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 117 inferred relationships involving `PortfolioPosition` (e.g. with `routes/feedback.py — Scoring feedback loop endpoints and background tasks.  Pr` and `Validate the X-Internal-Key header and optional IP restriction.      Raises HT`) actually correct?**
