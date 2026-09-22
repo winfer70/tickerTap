@@ -1576,3 +1576,33 @@ class DailyBriefingLog(Base):
     briefing_type = Column(String(20), nullable=False)
     sent_date = Column(Date, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class PositionReviewReminder(Base):
+    """A rules-driven review date for an open position: Phase Framework
+    milestones computed from date_entered, plus upcoming earnings. Generated
+    by review_reminders.sync_review_reminders(); status is set from the
+    Calendar page. google_event_id is reserved for the Google Calendar push.
+    """
+
+    __tablename__ = "position_review_reminders"
+    __table_args__ = (
+        UniqueConstraint("position_id", "kind", "due_date", name="uq_review_reminder_position_kind_date"),
+        Index("idx_review_reminders_user_due", "user_id", "due_date"),
+    )
+
+    reminder_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    position_id = Column(
+        UUID(as_uuid=True), ForeignKey("portfolio_positions.position_id", ondelete="CASCADE"), nullable=False
+    )
+    ticker = Column(String(20), nullable=False)
+    kind = Column(String(30), nullable=False)  # grace_end | bep_decision | extension_end | phase2_review | earnings
+    due_date = Column(Date, nullable=False)
+    title = Column(String(200), nullable=False)
+    detail = Column(Text, nullable=True)
+    status = Column(String(12), nullable=False, server_default="pending")  # pending | done | dismissed | cancelled
+    notified_at = Column(DateTime(timezone=True), nullable=True)
+    google_event_id = Column(String(256), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
