@@ -1074,8 +1074,9 @@ class WorkerSettings:
         # same pattern alert_worker.py uses for its EOD soft-stop check.
         # DailyBriefingLog dedups so only the first tick inside each day's
         # target window actually sends.
-        cron(send_premarket_briefings, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
-        cron(send_postmarket_briefings, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
+        # timeout > job_timeout: these now include LLM prediction/reflection calls.
+        cron(send_premarket_briefings, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}, timeout=900),
+        cron(send_postmarket_briefings, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}, timeout=900),
     ]
     on_startup = _worker_startup
     redis_settings = RedisSettings.from_dsn(_REDIS_URL)

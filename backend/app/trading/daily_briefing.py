@@ -12,23 +12,20 @@ once inside it, DailyBriefingLog (one row per user/briefing_type/date) is
 the dedup: the first hit in the window sends and logs, every later hit in
 the same window (or later that day) is a no-op.
 
-Content deliberately reuses existing signals instead of building a new
-scanner:
-  - "Worth a look" (pre-market) is recent (default 7d) Form 4 open-market
-    buys above a materiality floor on tickers already held or watchlisted —
-    the same insider-buy signal insider_monitor.py already gates on, just
-    surfaced here as a daily roundup instead of (or in addition to) a
-    one-off alert.
-  - Stop-level warnings (both briefings) reuse PortfolioPosition's existing
-    hard_stop/soft_stop fields via book_loader's BookSnapshot.
-  - The post-market recap's "suppressed today" section reuses
-    alert_cooldown.pop_suppressed_for_digest() so cooldown-suppressed
-    insider filings surface here instead of silently vanishing.
+Each briefing is two Telegram messages so neither hits Telegram's 4096-char
+limit:
+  - Pre-market: the briefing (reviews due from the rules-driven calendar,
+    rule-4 profit-taking checks, stop warnings, recent insider buying on
+    held/watched names) and "Today's calls" (predictions.py).
+  - Post-market: the recap (P&L, movers, reviews coming up, alerts deferred
+    to this digest by alert_tiers.py, cooldown-suppressed alerts) and the
+    prediction scorecard with the reflections and new lessons.
 """
 from __future__ import annotations
 
 import asyncio
 import os
+from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
@@ -39,11 +36,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from ..models import DailyBriefingLog, InsiderFiling
+from ..models import DailyBriefingLog, InsiderFiling, Notification
+from . import predictions
 from .alert_cooldown import pop_suppressed_for_digest
 from .book_loader import load_books
 from .insider_gate import BookSnapshot
 from .notifications import notify_soft_stop
+from .review_reminders import record_price_milestones, reminders_between, reminders_due, sync_review_reminders
 
 logger = structlog.get_logger("daily_briefing")
 
@@ -64,6 +63,9 @@ _BUY_SIGNAL_LOOKBACK_DAYS = 7
 _BUY_SIGNAL_MIN_NOTIONAL = Decimal("25000")
 _MAX_BUY_IDEAS = 5
 _NEAR_STOP_PCT = Decimal("0.02")
+_UPCOMING_REVIEW_DAYS = 3
+_MAX_DIGEST_TICKERS = 8
+_TELEGRAM_BODY_LIMIT = 3900
 
 
 def _ny_now() -> datetime:
@@ -155,89 +157,162 @@ def _near_stop_note(ticker: str, pos: dict, price: Decimal) -> Optional[str]:
     return None
 
 
-async def build_premarket_briefing(session: AsyncSession, user_id, book: BookSnapshot) -> Optional[str]:
+async def _deferred_alerts(session: AsyncSession, user_id, book: BookSnapshot) -> list[str]:
+    """Alerts alert_tiers.py routed to this digest instead of a real-time ping
+    (last 24h), grouped per ticker with held positions first."""
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    res = await session.execute(
+        select(Notification)
+        .where(
+            Notification.user_id == user_id,
+            Notification.created_at >= since,
+            Notification.metadata_json["digest"].astext == "true",
+        )
+        .order_by(Notification.created_at)
+    )
+    by_ticker: dict = defaultdict(list)
+    for n in res.scalars().all():
+        ticker = ((n.metadata_json or {}).get("ticker") or "?").upper()
+        by_ticker[ticker].append(n.title)
+    if not by_ticker:
+        return []
+    order = sorted(by_ticker, key=lambda t: (t not in book.held_tickers, -len(by_ticker[t]), t))
+    lines = ["Lower-priority alerts today (no ping sent):"]
+    for t in order[:_MAX_DIGEST_TICKERS]:
+        tag = "held" if t in book.held_tickers else "watchlist" if t in book.watchlist_tickers else "not held"
+        titles = "; ".join(title[:80] for title in by_ticker[t][:2])
+        more = f" (+{len(by_ticker[t]) - 2} more)" if len(by_ticker[t]) > 2 else ""
+        lines.append(f"• {t} ({tag}): {titles}{more}")
+    if len(order) > _MAX_DIGEST_TICKERS:
+        lines.append(f"…and {len(order) - _MAX_DIGEST_TICKERS} more tickers — see Alerts in the app.")
+    return lines
+
+
+def _join(sections: list[list[str]]) -> Optional[str]:
+    parts = ["\n".join(s) for s in sections if s]
+    if not parts:
+        return None
+    return "\n\n".join(parts)[:_TELEGRAM_BODY_LIMIT]
+
+
+async def build_premarket_messages(
+    session: AsyncSession, user_id, book: BookSnapshot, today: date
+) -> list[tuple[str, str]]:
     tickers = sorted(book.held_tickers | book.watchlist_tickers)
     if not tickers:
-        return None
+        return []
     quotes = await _fetch_quotes(tickers)
+    now = datetime.now(timezone.utc)
+    await record_price_milestones(session, user_id, {t: q.price for t, q in quotes.items()}, today)
 
-    lines: list = []
-    if book.held_tickers:
-        watch = []
-        for t in sorted(book.held_tickers):
-            q = quotes.get(t)
-            pos = book.positions.get(t) or {}
-            if not q:
-                continue
-            note = _near_stop_note(t, pos, Decimal(str(q.price)))
-            if note:
-                watch.append(note)
-        if watch:
-            lines.append("Watch today (near a stop level as of last close):")
-            lines.extend(watch)
-        else:
-            lines.append(f"{len(book.held_tickers)} holding(s), none near a stop level as of last close.")
-
-    ideas = await _recent_buy_signals(session, tickers)
-    if ideas:
-        if lines:
-            lines.append("")
-        lines.append("Worth a look (recent insider buying):")
-        for idea in ideas[:_MAX_BUY_IDEAS]:
-            lines.append(f"• {idea['ticker']}: {idea['summary']}")
-
-    if not lines:
-        return None
-    return "\n".join(lines)[:3500]
-
-
-async def build_postmarket_briefing(session: AsyncSession, user_id, book: BookSnapshot) -> Optional[str]:
-    tickers = sorted(book.held_tickers)
-    if not tickers:
-        return None
-    quotes = await _fetch_quotes(tickers)
-
-    total_value = Decimal("0")
-    total_day_pl = Decimal("0")
-    movers = []
-    near_stop = []
-    for t in tickers:
+    reviews: list[str] = []
+    for r in await reminders_due(session, user_id, today):
+        overdue = "" if r.due_date == today else f" (due {r.due_date:%d %b})"
+        reviews.append(f"📅 {r.title}{overdue}")
+        if r.detail:
+            reviews.append(f"   {r.detail[:220]}")
+        if r.notified_at is None:
+            r.notified_at = now
+    stops: list[str] = []
+    for t in sorted(book.held_tickers):
         q = quotes.get(t)
         if not q:
             continue
-        pos = book.positions.get(t) or {}
-        qty = Decimal(str(pos.get("quantity") or 0))
-        price = Decimal(str(q.price))
-        total_value += qty * price
-        total_day_pl += qty * Decimal(str(q.change))
-        movers.append((t, q.change_pct))
-        note = _near_stop_note(t, pos, price)
+        note = _near_stop_note(t, book.positions.get(t) or {}, Decimal(str(q.price)))
         if note:
-            near_stop.append(note)
+            stops.append(note)
+    review_section = (["Reviews due:"] + reviews) if reviews else []
 
-    lines = []
-    sign = "+" if total_day_pl >= 0 else ""
-    lines.append(f"Portfolio: ${total_value:,.2f} ({sign}${total_day_pl:,.2f} today)")
+    stop_section: list[str] = []
+    if stops:
+        stop_section = ["Watch today (near a stop level):"] + stops
+    elif book.held_tickers:
+        stop_section = [f"{len(book.held_tickers)} holding(s), none near a stop level."]
 
-    movers.sort(key=lambda m: m[1], reverse=True)
-    if len(movers) > 1:
-        best, worst = movers[0], movers[-1]
-        lines.append(f"Best: {best[0]} {'+' if best[1] >= 0 else ''}{best[1]:.2f}%")
-        lines.append(f"Worst: {worst[0]} {'+' if worst[1] >= 0 else ''}{worst[1]:.2f}%")
+    idea_section: list[str] = []
+    ideas = await _recent_buy_signals(session, tickers)
+    if ideas:
+        idea_section = ["Worth a look (recent insider buying):"]
+        idea_section += [f"• {i['ticker']}: {i['summary']}" for i in ideas[:_MAX_BUY_IDEAS]]
 
-    if near_stop:
-        lines.append("")
-        lines.append("For tomorrow:")
-        lines.extend(near_stop)
+    messages = []
+    body = _join([review_section, stop_section, idea_section])
+    if body:
+        messages.append(("☀️ Pre-market briefing", body))
 
+    # Catch up anything left ungraded from earlier sessions before making
+    # today's calls, so today's prompt sees the freshest track record/lessons.
+    catch_up = await predictions.grade_pending(session, user_id, upto=today - timedelta(days=1))
+    await predictions.reflect(session, user_id, catch_up)
+    preds, market_view = await predictions.generate_predictions(session, user_id, book, today)
+    stats = await predictions.track_record(session, user_id, today)
+    calls = _join([predictions.format_calls(preds, market_view, stats)])
+    if calls:
+        messages.append(("🔮 Today's calls", calls + "\n\nModel calls, not advice — graded after the close."))
+    return messages
+
+
+async def build_postmarket_messages(
+    session: AsyncSession, user_id, book: BookSnapshot, today: date
+) -> list[tuple[str, str]]:
+    tickers = sorted(book.held_tickers)
+    messages = []
+    recap: list[str] = []
+    near_stop: list[str] = []
+    if tickers:
+        quotes = await _fetch_quotes(tickers)
+        total_value = Decimal("0")
+        total_day_pl = Decimal("0")
+        movers = []
+        for t in tickers:
+            q = quotes.get(t)
+            if not q:
+                continue
+            pos = book.positions.get(t) or {}
+            qty = Decimal(str(pos.get("quantity") or 0))
+            price = Decimal(str(q.price))
+            total_value += qty * price
+            total_day_pl += qty * Decimal(str(q.change))
+            movers.append((t, q.change_pct))
+            note = _near_stop_note(t, pos, price)
+            if note:
+                near_stop.append(note)
+        sign = "+" if total_day_pl >= 0 else ""
+        recap.append(f"Portfolio: ${total_value:,.2f} ({sign}${total_day_pl:,.2f} today)")
+        movers.sort(key=lambda m: m[1], reverse=True)
+        if len(movers) > 1:
+            best, worst = movers[0], movers[-1]
+            recap.append(f"Best: {best[0]} {best[1]:+.2f}%")
+            recap.append(f"Worst: {worst[0]} {worst[1]:+.2f}%")
+
+    upcoming = [
+        r for r in await reminders_between(
+            session, user_id, today + timedelta(days=1), today + timedelta(days=_UPCOMING_REVIEW_DAYS)
+        )
+        if r.status == "pending"
+    ]
+    tomorrow: list[str] = []
+    if near_stop or upcoming:
+        tomorrow = ["Coming up:"] + near_stop + [f"📅 {r.due_date:%a %d %b}: {r.title}" for r in upcoming]
+
+    deferred = await _deferred_alerts(session, user_id, book)
+    cooled: list[str] = []
     suppressed = await pop_suppressed_for_digest(session, user_id)
     if suppressed:
-        lines.append("")
-        lines.append("Cooled-down alerts today (no separate ping sent):")
-        for s in suppressed[:8]:
-            lines.append(f"• {s['ticker']} ({s['event_type']}): {s['suppressed_count']} more filing(s)")
+        cooled = ["Cooled-down alerts today (no separate ping sent):"]
+        cooled += [f"• {s['ticker']} ({s['event_type']}): {s['suppressed_count']} more filing(s)" for s in suppressed[:8]]
 
-    return "\n".join(lines)[:3500]
+    body = _join([recap, tomorrow, deferred, cooled])
+    if body:
+        messages.append(("🌙 Post-market recap", body))
+
+    graded = await predictions.grade_pending(session, user_id, upto=today)
+    lessons = await predictions.reflect(session, user_id, graded)
+    stats = await predictions.track_record(session, user_id, today)
+    card = _join([predictions.format_scorecard(graded, lessons, stats)])
+    if card:
+        messages.append(("📊 Prediction scorecard", card))
+    return messages
 
 
 async def send_premarket_briefings(ctx: dict) -> dict:
@@ -246,7 +321,7 @@ async def send_premarket_briefings(ctx: dict) -> dict:
     now = _ny_now()
     if now.weekday() >= 5 or not _in_window(now, _PREMARKET_WINDOW):
         return {"skipped": True}
-    return await _run_briefing_cycle("premarket", build_premarket_briefing, "☀️ Pre-market briefing")
+    return await _run_briefing_cycle("premarket", build_premarket_messages)
 
 
 async def send_postmarket_briefings(ctx: dict) -> dict:
@@ -255,36 +330,41 @@ async def send_postmarket_briefings(ctx: dict) -> dict:
     now = _ny_now()
     if now.weekday() >= 5 or not _in_window(now, _POSTMARKET_WINDOW):
         return {"skipped": True}
-    return await _run_briefing_cycle("postmarket", build_postmarket_briefing, "🌙 Post-market recap")
+    return await _run_briefing_cycle("postmarket", build_postmarket_messages)
 
 
-async def _run_briefing_cycle(briefing_type: str, builder, title: str) -> dict:
+async def _run_briefing_cycle(briefing_type: str, builder) -> dict:
     stats = {"sent": 0, "empty": 0, "errors": 0}
     today = _ny_now().date()
     async with _SessionLocal() as session:
+        if briefing_type == "premarket":
+            try:
+                logger.info("review_reminders_synced", **await sync_review_reminders(session, today))
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                logger.exception("review_reminders_sync_failed")
         books, _sectors = await load_books(session)
         for uid, book in books.items():
             try:
                 if await _already_sent(session, uid, briefing_type, today):
                     continue
-                text = await builder(session, uid, book)
+                messages = await builder(session, uid, book, today)
                 _mark_sent(session, uid, briefing_type, today)
-                if text:
+                for title, body in messages:
                     await notify_soft_stop(
                         db=session,
                         user_id=uid,
                         event_type="daily_briefing",
                         title=title,
-                        body=text,
+                        body=body,
                         metadata={"source": "daily_briefing", "kind": briefing_type},
                         ntfy_priority=3,
                         send_in_app=True,
                         send_telegram=True,
                         send_ntfy=False,
                     )
-                    stats["sent"] += 1
-                else:
-                    stats["empty"] += 1
+                stats["sent" if messages else "empty"] += 1
                 await session.commit()
             except Exception:
                 await session.rollback()

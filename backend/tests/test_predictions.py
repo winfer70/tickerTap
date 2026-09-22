@@ -125,3 +125,11 @@ def test_format_calls_and_scorecard():
     assert "❌ INTC" in card[1] and "why: Beat on margins." in card[2]
     assert any("[INTC] Earnings week" in l for l in card)
     assert format_scorecard([], [], stats) == []
+
+
+def test_clip_cuts_on_word_boundary():
+    from app.trading.predictions import _clip
+
+    assert _clip("short", 10) == "short"
+    out = _clip("broader market sentiment or unanticipated catalysts", 40)
+    assert out.endswith("…") and len(out) <= 40 and "catal" not in out

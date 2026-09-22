@@ -9,9 +9,14 @@ Loop:
   2. Post-market: each call is graded against the actual regular-session
      close (FLAT = within ±FLAT_BAND_PCT).
   3. The LLM reflects on why each call was right or wrong (separating
-     market-wide moves from stock-specific ones) and distils at most one
-     reusable lesson per ticker plus a couple of general ones. Lessons are
-     stored in prediction_lessons and fed back into step 1 the next morning.
+     market-wide moves from stock-specific ones). Only misses produce
+     lessons — one per wrong call, plus a general one only when several
+     misses share a cause — since a single right call isn't evidence a
+     method works. Lessons are stored in prediction_lessons and the last
+     60 days' active ones are fed back into step 1 the next morning.
+
+Held stocks only: crypto trades 24/7 (no session close to grade against) and
+the rules this serves are for stock trades, not long-term crypto/gold holds.
 
 Ungraded predictions (data not in yet at 16:30, a crashed run) are caught up
 on the next pre-market cycle; a date with no session (market holiday) is
@@ -36,6 +41,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import DailyPrediction, InsiderFiling, PositionReviewReminder, PredictionLesson
+from .book_loader import is_stock
 from .briefing_advice import load_investment_rules, vol_class
 from .insider_gate import BookSnapshot
 from .market_context import fetch_ticker_news
@@ -51,6 +57,9 @@ _MAX_TICKERS = 20
 _MAX_GENERAL_LESSONS_IN_PROMPT = 10
 _MAX_TICKER_LESSONS_IN_PROMPT = 3
 _MAX_GENERAL_LESSONS_PER_DAY = 2
+# Market regimes change; old lessons stop applying. They stay visible (and can be
+# re-activated) on the Calendar page, just not fed to the prompt.
+_LESSON_MAX_AGE_DAYS = 60
 _NY_TZ = ZoneInfo("America/New_York")
 DIRECTIONS = ("UP", "DOWN", "FLAT")
 ARROWS = {"UP": "↑", "DOWN": "↓", "FLAT": "→"}
@@ -246,11 +255,12 @@ TASK
 For each ticker explain in 1-2 sentences WHY the call was right or wrong. Separate market-wide moves
 (compare the stock to the market move) from stock-specific causes (news, insider activity, earnings,
 technical levels). If the call was right for the wrong reason, say so.
-Then extract lessons that would have improved the call: concrete, testable heuristics that change how
-you pick a direction or set confidence tomorrow (e.g. "when futures are down >1% pre-market, cap UP
-confidence on high-beta names at 55"). Not descriptions of what happened, not trade ideas. At most one
-lesson per ticker and at most {_MAX_GENERAL_LESSONS_PER_DAY} general lessons; a general lesson must not
-restate a ticker lesson. Use null when there is no real lesson — a lucky or unlucky day is not a lesson.
+Then, for WRONG calls only, extract the lesson that would have made the call right: a concrete,
+testable heuristic that changes how you pick a direction or set confidence (e.g. "when futures are
+down >1% pre-market, cap UP confidence on high-beta names at 55"). Not a description of what happened,
+not a trade idea. CORRECT calls get lesson null — one right call is not evidence a method works.
+general_lessons only when two or more WRONG calls share the same cause (max {_MAX_GENERAL_LESSONS_PER_DAY});
+otherwise return an empty list. A lucky or unlucky day is not a lesson — use null.
 Return ONLY JSON:
 {{"summary": "one or two sentences on the day", "reviews": [{{"ticker": "XYZ", "why": "...", "lesson": "... or null"}}], "general_lessons": ["..."]}}"""
 
@@ -375,7 +385,11 @@ async def track_record(session: AsyncSession, user_id, today: date) -> dict:
 async def active_lessons(session: AsyncSession, user_id, tickers: set[str]) -> tuple[list[str], dict]:
     res = await session.execute(
         select(PredictionLesson)
-        .where(PredictionLesson.user_id == user_id, PredictionLesson.active.is_(True))
+        .where(
+            PredictionLesson.user_id == user_id,
+            PredictionLesson.active.is_(True),
+            PredictionLesson.source_date >= date.today() - timedelta(days=_LESSON_MAX_AGE_DAYS),
+        )
         .order_by(PredictionLesson.created_at.desc())
     )
     general, per_ticker = [], defaultdict(list)
@@ -447,7 +461,11 @@ async def generate_predictions(
     existing = await predictions_for(session, user_id, trade_date)
     if existing:
         return existing, None
-    tickers = sorted(book.held_tickers)[:_MAX_TICKERS]
+    # Stocks only: crypto trades 24/7 (no session close to grade against) and
+    # the user's rules target stock trades, not long-term crypto/gold holds.
+    tickers = sorted(
+        t for t in book.held_tickers if is_stock((book.positions.get(t) or {}).get("asset_type"))
+    )[:_MAX_TICKERS]
     if not tickers:
         return [], None
 
@@ -618,7 +636,7 @@ async def reflect(session: AsyncSession, user_id, graded: list[DailyPrediction])
         for p in preds:
             rv = reviews.get(p.ticker)
             p.reflection = (rv or {}).get("why") or summary or "No reflection returned."
-            lesson = (rv or {}).get("lesson")
+            lesson = (rv or {}).get("lesson") if p.outcome == "WRONG" else None
             if lesson and _norm_lesson(lesson) not in known:
                 known.add(_norm_lesson(lesson))
                 existing.insert(0, lesson)
@@ -627,7 +645,8 @@ async def reflect(session: AsyncSession, user_id, graded: list[DailyPrediction])
                 )
                 session.add(row)
                 new_lessons.append(row)
-        for g in general:
+        wrong = sum(p.outcome == "WRONG" for p in preds)
+        for g in general if wrong >= 2 else []:
             if _norm_lesson(g) in known:
                 continue
             known.add(_norm_lesson(g))
@@ -640,6 +659,13 @@ async def reflect(session: AsyncSession, user_id, graded: list[DailyPrediction])
 
 
 # ── Telegram formatting ─────────────────────────────────────────────────────
+
+def _clip(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    cut = text[: limit - 1].rsplit(" ", 1)[0].rstrip(",;:—- ")
+    return cut + "…"
+
 
 def format_calls(preds: list[DailyPrediction], market_view: Optional[str], stats: dict) -> list[str]:
     if not preds:
@@ -654,7 +680,7 @@ def format_calls(preds: list[DailyPrediction], market_view: Optional[str], stats
             line += f" — {p.action}"
         lines.append(line)
         if p.rationale:
-            lines.append(f"   {p.rationale[:140]}")
+            lines.append(f"   {_clip(p.rationale, 160)}")
     return lines
 
 
@@ -668,8 +694,8 @@ def format_scorecard(graded: list[DailyPrediction], lessons: list[PredictionLess
         mark = "✅" if p.outcome == "CORRECT" else "❌"
         lines.append(f"{mark} {p.ticker} called {p.direction}, moved {float(p.actual_change_pct):+.1f}%")
         if p.reflection and p.outcome == "WRONG":
-            lines.append(f"   why: {p.reflection[:160]}")
+            lines.append(f"   why: {_clip(p.reflection, 240)}")
     if lessons:
         lines.append("New lessons (fed into tomorrow's calls):")
-        lines.extend(f"• {('[' + l.ticker + '] ') if l.ticker else ''}{l.lesson[:160]}" for l in lessons)
+        lines.extend(f"• {('[' + l.ticker + '] ') if l.ticker else ''}{_clip(l.lesson, 240)}" for l in lessons)
     return lines

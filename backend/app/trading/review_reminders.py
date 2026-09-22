@@ -20,11 +20,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Portfolio, PortfolioPosition, PositionReviewReminder
+from .book_loader import entry_date, is_stock
 from .briefing_advice import load_investment_rules, vol_class
 
 logger = structlog.get_logger("review_reminders")
 
 EARNINGS_KIND = "earnings"
+T1_KIND = "t1_hit"
+T2_KIND = "t2_hit"
 _EARNINGS_HORIZON_DAYS = 60
 _OVERDUE_LOOKBACK_DAYS = 7
 
@@ -114,20 +117,40 @@ def earnings_milestone(ticker: str, due: date) -> Milestone:
     )
 
 
-def price_rule_checks(ticker: str, pos: dict, price: Optional[float], rules: dict) -> list[str]:
-    """Rule 4 profit-taking checks for the pre-market briefing (not calendar
-    entries — they depend on price, not date)."""
-    entry = pos.get("purchase_price")
-    if not entry or not price:
-        return []
-    gain = (price / entry - 1) * 100
+def _targets(rules: dict) -> tuple[float, float]:
     t1 = float(rules.get("target1_pct", rules.get("swing_target1_pct", 7.0)))
     t2 = float(rules.get("target2_pct", rules.get("swing_target2_pct", 12.0)))
+    return t1, t2
+
+
+def price_milestone(
+    ticker: str, entry: Optional[float], price: Optional[float], rules: dict, have: set[str], today: date
+) -> Optional[Milestone]:
+    """Rule 4 profit-taking milestone to record the first time a position
+    crosses T1 or T2 (once per position — `have` holds the kinds already
+    recorded, so a position sitting above T2 doesn't re-fire every day)."""
+    if not entry or not price or T2_KIND in have:
+        return None
+    gain = (price / entry - 1) * 100
+    t1, t2 = _targets(rules)
+    where = f"Entry ${entry:,.2f}, now ${price:,.2f} (+{gain:.1f}%)."
     if gain >= t2:
-        return [f"🎯 {ticker} +{gain:.1f}% from entry — past T2 (+{t2:g}%): rule 4 says exit the remainder."]
-    if gain >= t1:
-        return [f"🎯 {ticker} +{gain:.1f}% from entry — T1 (+{t1:g}%) hit: take partial profits (rule 4)."]
-    return []
+        return Milestone(
+            T2_KIND,
+            today,
+            f"{ticker}: T2 reached (+{gain:.1f}%)",
+            f"{where} Rule 4: partial at +{t1:g}% (T1), remainder out at +{t2:g}% (T2). T2 is hit — "
+            "exit the remainder, or consciously trail the stop if you're letting it run.",
+        )
+    if gain >= t1 and T1_KIND not in have:
+        return Milestone(
+            T1_KIND,
+            today,
+            f"{ticker}: T1 reached (+{gain:.1f}%)",
+            f"{where} Rule 4: take partial profits at +{t1:g}% and run the remainder to +{t2:g}%. "
+            "Stop stays put or trails up — never moved against the position.",
+        )
+    return None
 
 
 async def _upcoming_earnings(tickers: list[str], today: date) -> tuple[dict, set]:
@@ -171,12 +194,13 @@ async def sync_review_reminders(
         select(PortfolioPosition, Portfolio.user_id)
         .join(Portfolio, Portfolio.portfolio_id == PortfolioPosition.portfolio_id)
         .where(PortfolioPosition.closed_at.is_(None), PortfolioPosition.is_excluded.is_(False))
-        .order_by(PortfolioPosition.date_entered, PortfolioPosition.position_id)
+        .order_by(PortfolioPosition.purchase_date, PortfolioPosition.position_id)
     )
     if user_id is not None:
         q = q.where(Portfolio.user_id == user_id)
-    rows = (await session.execute(q)).all()
-    open_ids = {pos.position_id for pos, _ in rows}
+    all_rows = (await session.execute(q)).all()
+    open_ids = {pos.position_id for pos, _ in all_rows}
+    rows = [(pos, uid) for pos, uid in all_rows if is_stock(pos.asset_type)]
 
     earnings, earnings_known = ({}, set())
     if include_earnings and rows:
@@ -198,7 +222,7 @@ async def sync_review_reminders(
         if not ticker:
             continue
         entry = float(pos.purchase_price) if pos.purchase_price is not None else None
-        wanted = phase_milestones(ticker, pos.date_entered, entry, vol_class(ticker, rules), rules, today)
+        wanted = phase_milestones(ticker, entry_date(pos), entry, vol_class(ticker, rules), rules, today)
         if ticker in earnings and (uid, ticker) not in earnings_assigned:
             wanted.append(earnings_milestone(ticker, earnings[ticker]))
             earnings_assigned.add((uid, ticker))
@@ -220,7 +244,7 @@ async def sync_review_reminders(
                 )
                 stats["created"] += 1
         for key, r in have.items():
-            if r.status != "pending" or key in wanted_keys:
+            if r.status != "pending" or key in wanted_keys or r.kind in (T1_KIND, T2_KIND):
                 continue
             if r.kind == EARNINGS_KIND and (not include_earnings or ticker not in earnings_known):
                 continue
@@ -237,6 +261,55 @@ async def sync_review_reminders(
 
     await session.flush()
     return stats
+
+
+async def record_price_milestones(session: AsyncSession, user_id, prices: dict, today: date) -> int:
+    """Create a T1/T2 reminder (due today) for each of the user's open stock
+    positions that has newly crossed a profit target. Caller commits."""
+    rules = load_investment_rules()
+    res = await session.execute(
+        select(PortfolioPosition)
+        .join(Portfolio, Portfolio.portfolio_id == PortfolioPosition.portfolio_id)
+        .where(
+            Portfolio.user_id == user_id,
+            PortfolioPosition.closed_at.is_(None),
+            PortfolioPosition.is_excluded.is_(False),
+        )
+    )
+    positions = [p for p in res.scalars().all() if is_stock(p.asset_type)]
+    if not positions:
+        return 0
+    res = await session.execute(
+        select(PositionReviewReminder.position_id, PositionReviewReminder.kind).where(
+            PositionReviewReminder.position_id.in_([p.position_id for p in positions]),
+            PositionReviewReminder.kind.in_((T1_KIND, T2_KIND)),
+        )
+    )
+    have: dict = defaultdict(set)
+    for pid, kind in res.all():
+        have[pid].add(kind)
+    created = 0
+    for pos in positions:
+        ticker = (pos.ticker or "").upper()
+        entry = float(pos.purchase_price) if pos.purchase_price else None
+        m = price_milestone(ticker, entry, prices.get(ticker), rules, have[pos.position_id], today)
+        if m is None:
+            continue
+        session.add(
+            PositionReviewReminder(
+                user_id=user_id,
+                position_id=pos.position_id,
+                ticker=ticker,
+                kind=m.kind,
+                due_date=m.due_date,
+                title=m.title[:200],
+                detail=m.detail,
+            )
+        )
+        have[pos.position_id].add(m.kind)
+        created += 1
+    await session.flush()
+    return created
 
 
 async def reminders_due(session: AsyncSession, user_id, today: date) -> list[PositionReviewReminder]:
