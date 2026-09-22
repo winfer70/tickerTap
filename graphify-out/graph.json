@@ -10404,7 +10404,7 @@
       "community": 1
     },
     {
-      "label": "alert_cooldown.py \u2014 per (user, ticker, event_type) Telegram-alert cooldown.  Mul",
+      "label": "alert_cooldown.py \u2014 per (user, ticker, event_type) Telegram-alert cooldown.\r \r M",
       "file_type": "rationale",
       "source_file": "backend\\app\\trading\\alert_cooldown.py",
       "source_location": "L1",
@@ -10412,7 +10412,7 @@
       "community": 1
     },
     {
-      "label": "Returns True if this alert should actually be sent now. If a cooldown     is act",
+      "label": "Returns True if this alert should actually be sent now. If a cooldown\r     is ac",
       "file_type": "rationale",
       "source_file": "backend\\app\\trading\\alert_cooldown.py",
       "source_location": "L40",
@@ -10420,7 +10420,7 @@
       "community": 1
     },
     {
-      "label": "Returns and clears every cooldown row with suppressed activity for     this user",
+      "label": "Returns and clears every cooldown row with suppressed activity for\r     this use",
       "file_type": "rationale",
       "source_file": "backend\\app\\trading\\alert_cooldown.py",
       "source_location": "L85",
@@ -11252,7 +11252,7 @@
       "community": 1
     },
     {
-      "label": "daily_briefing.py \u2014 pre-market and post-market portfolio digest.  Two arq cron e",
+      "label": "daily_briefing.py \u2014 pre-market and post-market portfolio digest.\r \r Two arq cron",
       "file_type": "rationale",
       "source_file": "backend\\app\\trading\\daily_briefing.py",
       "source_location": "L1",
@@ -11260,7 +11260,7 @@
       "community": 1
     },
     {
-      "label": "Best-effort quote fetch for a list of tickers, run off the event loop     since",
+      "label": "Best-effort quote fetch for a list of tickers, run off the event loop\r     since",
       "file_type": "rationale",
       "source_file": "backend\\app\\trading\\daily_briefing.py",
       "source_location": "L96",
@@ -11268,7 +11268,7 @@
       "community": 1
     },
     {
-      "label": "Recent open-market insider buys (Form 4, code P) above the     materiality floor",
+      "label": "Recent open-market insider buys (Form 4, code P) above the\r     materiality floo",
       "file_type": "rationale",
       "source_file": "backend\\app\\trading\\daily_briefing.py",
       "source_location": "L116",
@@ -11276,7 +11276,7 @@
       "community": 1
     },
     {
-      "label": "arq cron entrypoint \u2014 schedule frequently (e.g. every 5 min); no-ops     outside",
+      "label": "arq cron entrypoint \u2014 schedule frequently (e.g. every 5 min); no-ops\r     outsid",
       "file_type": "rationale",
       "source_file": "backend\\app\\trading\\daily_briefing.py",
       "source_location": "L244",
@@ -11284,7 +11284,7 @@
       "community": 1
     },
     {
-      "label": "arq cron entrypoint \u2014 schedule frequently (e.g. every 5 min); no-ops     outside",
+      "label": "arq cron entrypoint \u2014 schedule frequently (e.g. every 5 min); no-ops\r     outsid",
       "file_type": "rationale",
       "source_file": "backend\\app\\trading\\daily_briefing.py",
       "source_location": "L253",
@@ -72249,7 +72249,7 @@
       "relation": "calls",
       "confidence": "INFERRED",
       "source_file": "backend\\app\\routes\\insider.py",
-      "source_location": "L770",
+      "source_location": "L776",
       "weight": 0.8,
       "_src": "insider_analyze_with_ai",
       "_tgt": "insider_analyzeout",
@@ -72273,7 +72273,7 @@
       "relation": "calls",
       "confidence": "INFERRED",
       "source_file": "backend\\app\\routes\\insider.py",
-      "source_location": "L776",
+      "source_location": "L782",
       "weight": 0.8,
       "_src": "insider_analyze_with_ai",
       "_tgt": "insider_build_analysis_prompt",

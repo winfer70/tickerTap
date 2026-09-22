@@ -1,4 +1,4 @@
-# Graph Report - .  (2026-09-17)
+# Graph Report - .  (2026-09-22)
 
 ## Corpus Check
 - 228 files · ~0 words
@@ -41,7 +41,7 @@ Nodes (385): AuthOut, create_access_token(), decode_access_token(), hash_passwor
 
 ### Community 1 - "Community 1"
 Cohesion: 0.02
-Nodes (214): pop_suppressed_for_digest(), alert_cooldown.py — per (user, ticker, event_type) Telegram-alert cooldown.  Mul, Returns True if this alert should actually be sent now. If a cooldown     is act, Returns and clears every cooldown row with suppressed activity for     this user, should_send_alert(), load_avoid_tickers(), load_books(), _fetch_map() (+206 more)
+Nodes (214): pop_suppressed_for_digest(), alert_cooldown.py — per (user, ticker, event_type) Telegram-alert cooldown.  M, Returns True if this alert should actually be sent now. If a cooldown     is ac, Returns and clears every cooldown row with suppressed activity for     this use, should_send_alert(), load_avoid_tickers(), load_books(), _fetch_map() (+206 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.03
