@@ -21,6 +21,7 @@ from sqlalchemy.orm import sessionmaker
 
 from ..models import InsiderFiling, RuleAlert
 from .alert_cooldown import should_send_alert
+from .alert_tiers import DIGEST, REALTIME, delivery_tier
 from .book_loader import load_avoid_tickers, load_books
 from .heartbeat import write_worker_heartbeat
 from .insider_briefing import (
@@ -485,7 +486,7 @@ async def run_insider_cycle(
     now = now or datetime.now(timezone.utc)
     since_30 = now.date() - timedelta(days=30)
     since_365 = now.date() - timedelta(days=365)
-    stats = {"fetched": 0, "new": 0, "telegram": 0, "in_app": 0, "errors": 0}
+    stats = {"fetched": 0, "new": 0, "telegram": 0, "digest": 0, "in_app": 0, "errors": 0}
 
     atom = await fetcher.get(FORM4_ATOM_URL)
     entries = parse_atom_accessions(atom)
@@ -711,6 +712,7 @@ async def run_insider_cycle(
                         stats["in_app"] += 1
                     if gate.worth_telegram and uid not in accession_notified:
                         prio = 5 if gate.severity == "critical" else 4 if gate.severity == "warning" else 3
+                        tier = delivery_tier(gate.severity, ticker in book.held_tickers)
                         await deps.notify(
                             uid,
                             gate.event_type,
@@ -718,9 +720,10 @@ async def run_insider_cycle(
                             body,
                             prio,
                             ticker=ticker,
+                            tier=tier,
                         )
                         accession_notified.add(uid)
-                        stats["telegram"] += 1
+                        stats["telegram" if tier == REALTIME else "digest"] += 1
             if accession_notified:
                 await store.mark_notified(entry["accession"], now)
         except Exception:
@@ -779,9 +782,23 @@ async def poll_insider_filings(ctx: dict) -> dict:
                 return None
             return compute_track_record(rows, bars)
 
-        async def _notify(uid, event_type, title, body, prio, ticker=None):
+        async def _notify(uid, event_type, title, body, prio, ticker=None, tier=REALTIME):
             if uid is None:
                 logger.warning("insider_notify_no_user", title=title)
+                return
+            if tier == DIGEST:
+                await notify_soft_stop(
+                    db=session,
+                    user_id=uid,
+                    event_type=event_type,
+                    title=title,
+                    body=body,
+                    metadata={"source": "insider_monitor", "digest": True, "ticker": ticker},
+                    ntfy_priority=prio,
+                    send_in_app=True,
+                    send_telegram=False,
+                    send_ntfy=False,
+                )
                 return
             if ticker and not await should_send_alert(session, uid, ticker, event_type, title):
                 return

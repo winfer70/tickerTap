@@ -68,9 +68,9 @@ def _deps(book=None, notifies=None, user_id=None):
     notifies = notifies if notifies is not None else []
     uid = user_id or uuid.uuid4()
 
-    async def _notify(user, event, title, body, prio, ticker=None):
+    async def _notify(user, event, title, body, prio, ticker=None, tier="realtime"):
         notifies.append(
-            {"user_id": user, "event": event, "title": title, "body": body, "prio": prio, "ticker": ticker}
+            {"user_id": user, "event": event, "title": title, "body": body, "prio": prio, "ticker": ticker, "tier": tier}
         )
 
     return CycleDeps(
@@ -101,9 +101,9 @@ def _deps_multi(
     as production code (poll_insider_filings) now does."""
     notifies = notifies if notifies is not None else []
 
-    async def _notify(user, event, title, body, prio, ticker=None):
+    async def _notify(user, event, title, body, prio, ticker=None, tier="realtime"):
         notifies.append(
-            {"user_id": user, "event": event, "title": title, "body": body, "prio": prio, "ticker": ticker}
+            {"user_id": user, "event": event, "title": title, "body": body, "prio": prio, "ticker": ticker, "tier": tier}
         )
 
     return CycleDeps(
@@ -137,9 +137,12 @@ async def test_cycle_officer_buy_sends_telegram():
         now=datetime(2026, 9, 2, tzinfo=timezone.utc),
     )
     assert stats["new"] == 1
-    assert stats["telegram"] == 1
+    # Buy on a ticker the user doesn't hold — goes to the daily digest, not a real-time ping.
+    assert stats["telegram"] == 0
+    assert stats["digest"] == 1
     assert stats["in_app"] == 1
     assert len(notifies) == 1
+    assert notifies[0]["tier"] == "digest"
     assert notifies[0]["event"] == "insider_buy"
     assert "AAPL" in notifies[0]["title"]
     assert "concern" in notifies[0]["title"]
@@ -181,6 +184,7 @@ async def test_cycle_held_sell_is_critical_telegram():
     deps, notifies = _deps(book=_book(held_tickers={"AAPL"}))
     stats = await run_insider_cycle(MapFetcher(_mapping(xml=xml)), store, deps)
     assert stats["telegram"] == 1
+    assert notifies[0]["tier"] == "realtime"
     assert notifies[0]["event"] == "insider_sell"
     assert "concern" in notifies[0]["title"]
     # discretionary (no 10b5) held sell → high priority
@@ -257,8 +261,9 @@ async def test_multi_user_buy_on_unheld_ticker_goes_to_primary_only():
         now=datetime(2026, 9, 2, tzinfo=timezone.utc),
     )
 
-    assert stats["telegram"] == 1
+    assert stats["digest"] == 1
     assert notifies[0]["user_id"] == primary
+    assert notifies[0]["tier"] == "digest"
 
 
 @pytest.mark.asyncio
@@ -877,7 +882,9 @@ async def test_all_new_features_together():
         deps,
         now=datetime(2026, 9, 2, tzinfo=timezone.utc),
     )
-    assert stats["telegram"] == 1
+    # Unheld ticker → daily digest tier, not a real-time ping.
+    assert stats["telegram"] == 0
+    assert stats["digest"] == 1
     assert stats["in_app"] == 1
     assert "BULL" in notifies[0]["body"]
     xml = FORM4.replace("<transactionCode>P</transactionCode>", "<transactionCode>S</transactionCode>")
