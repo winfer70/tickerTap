@@ -186,7 +186,7 @@ class TestPositionPhaseFramework:
     phase/BEP context at all."""
 
     def test_phase0_grace_period_on_day_one(self):
-        today = date(2026, 9, 8)
+        today = date.today()  # advice_lines uses the real date
         pos = PositionBrief(quantity=10, purchase_price=100, date_entered=today - timedelta(days=1))
         lines = advice_lines("AAPL", EVENT_INSIDER_BUY, held=True, rules=RULES, position=pos)
         blob = " ".join(lines)
@@ -194,7 +194,7 @@ class TestPositionPhaseFramework:
         assert "grace period" in blob
 
     def test_phase1_bep_assessment_uses_stable_trigger(self):
-        today = date(2026, 9, 8)
+        today = date.today()  # advice_lines uses the real date
         pos = PositionBrief(quantity=10, purchase_price=100, date_entered=today - timedelta(days=6))
         lines = advice_lines("AAPL", EVENT_INSIDER_SELL, held=True, rules=RULES, position=pos)
         blob = " ".join(lines)
@@ -202,7 +202,7 @@ class TestPositionPhaseFramework:
         assert "+2%" in blob  # AAPL is stable_tickers -> stable_bep_trigger_pct
 
     def test_phase1_bep_assessment_uses_volatile_trigger(self):
-        today = date(2026, 9, 8)
+        today = date.today()  # advice_lines uses the real date
         pos = PositionBrief(quantity=10, purchase_price=100, date_entered=today - timedelta(days=6))
         lines = advice_lines("NVDA", EVENT_INSIDER_SELL, held=True, rules=RULES, position=pos)
         blob = " ".join(lines)
@@ -210,7 +210,7 @@ class TestPositionPhaseFramework:
         assert "+5%" in blob  # NVDA is volatile_tickers -> volatile_bep_trigger_pct
 
     def test_phase2_time_based_exit_past_day_ten(self):
-        today = date(2026, 9, 8)
+        today = date.today()  # advice_lines uses the real date
         pos = PositionBrief(quantity=10, purchase_price=100, date_entered=today - timedelta(days=15))
         lines = advice_lines("AAPL", EVENT_SOFT_STOP, held=True, rules=RULES, position=pos, stage="intraday")
         blob = " ".join(lines)
@@ -222,7 +222,7 @@ class TestPositionPhaseFramework:
         assert "Phase 0" not in blob and "Phase 1" not in blob and "Phase 2" not in blob
 
     def test_no_phase_note_when_not_held(self):
-        today = date(2026, 9, 8)
+        today = date.today()  # advice_lines uses the real date
         pos = PositionBrief(quantity=10, purchase_price=100, date_entered=today - timedelta(days=1))
         lines = advice_lines("AAPL", EVENT_INSIDER_BUY, held=False, rules=RULES, position=pos)
         blob = " ".join(lines)

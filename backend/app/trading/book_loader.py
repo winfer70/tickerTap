@@ -9,7 +9,9 @@ correlation note, so this had to live somewhere both can reach.
 """
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +19,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models import Portfolio, PortfolioPosition, Watchlist, WatchlistItem
 from .briefing_advice import load_investment_rules
 from .insider_gate import BookSnapshot, sector_exposure
+
+
+def entry_date(pos) -> Optional[date]:
+    """date_entered is rarely set (DeGiro sync/manual adds fill purchase_date
+    instead), so fall back to purchase_date for phase-framework math."""
+    if pos.date_entered is not None:
+        return pos.date_entered
+    return pos.purchase_date.date() if pos.purchase_date is not None else None
+
+
+def is_stock(asset_type: Optional[str]) -> bool:
+    """Phase framework / T1-T2 / daily predictions apply to stock trades,
+    not long-term crypto or physical-gold holdings."""
+    return (asset_type or "stock").lower() in ("stock", "etf")
 
 
 def load_avoid_tickers() -> set:
@@ -96,7 +112,8 @@ async def load_books(session: AsyncSession) -> tuple[dict, dict]:
                 "purchase_price": float(pos.purchase_price or 0),
                 "hard_stop": float(pos.hard_stop_loss) if pos.hard_stop_loss is not None else None,
                 "soft_stop": float(pos.soft_stop_loss) if pos.soft_stop_loss is not None else None,
-                "date_entered": pos.date_entered,
+                "date_entered": entry_date(pos),
+                "asset_type": pos.asset_type,
             }
         total = sum((p["market_value"] for p in pos_dicts), Decimal("0"))
         books[uid] = BookSnapshot(
