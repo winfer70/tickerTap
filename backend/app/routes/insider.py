@@ -767,6 +767,12 @@ async def analyze_with_ai(
         )
         db.add(analysis)
         await db.commit()
+        # created_at is server-generated (func.now()) and wasn't populated
+        # onto the in-memory object by the flush — a bare attribute access
+        # here would trigger an implicit lazy-load outside the AsyncSession's
+        # greenlet context and raise MissingGreenlet. db.refresh() reloads it
+        # the async-safe way.
+        await db.refresh(analysis)
         return AnalyzeOut(
             analysis_id=analysis.analysis_id, rating=analysis.rating, confidence=analysis.confidence,
             verdict=analysis.verdict, tickers_analyzed=[], filing_count=0, created_at=analysis.created_at,
@@ -816,6 +822,7 @@ async def analyze_with_ai(
 
     db.add(analysis)
     await db.commit()
+    await db.refresh(analysis)
     return AnalyzeOut(
         analysis_id=analysis.analysis_id, rating=analysis.rating, confidence=analysis.confidence,
         verdict=analysis.verdict, tickers_analyzed=sorted(ticker_groups), filing_count=len(raw_rows),
