@@ -1606,3 +1606,53 @@ class PositionReviewReminder(Base):
     google_event_id = Column(String(256), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class DailyPrediction(Base):
+    """One pre-market directional call on a held ticker for a single session,
+    graded after the close and explained by an LLM reflection (predictions.py)."""
+
+    __tablename__ = "daily_predictions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "trade_date", "ticker", name="uq_daily_predictions_user_date_ticker"),
+        Index("idx_daily_predictions_user_date", "user_id", "trade_date"),
+    )
+
+    prediction_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    trade_date = Column(Date, nullable=False)
+    ticker = Column(String(20), nullable=False)
+    direction = Column(String(5), nullable=False)  # UP | DOWN | FLAT
+    confidence = Column(SmallInteger, nullable=False)
+    expected_move_pct = Column(Numeric(8, 3), nullable=True)
+    action = Column(String(120), nullable=True)
+    rationale = Column(Text, nullable=True)
+    reference_close = Column(Numeric(18, 4), nullable=True)
+    close_price = Column(Numeric(18, 4), nullable=True)
+    actual_change_pct = Column(Numeric(8, 3), nullable=True)
+    market_change_pct = Column(Numeric(8, 3), nullable=True)
+    outcome = Column(String(12), nullable=True)  # CORRECT | WRONG | NO_SESSION; null until graded
+    reflection = Column(Text, nullable=True)
+    model = Column(String(40), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    graded_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class PredictionLesson(Base):
+    """A heuristic distilled from a graded prediction's reflection, fed back
+    into later prediction prompts. ticker=None means a general lesson;
+    active=False retires it (toggled from the Calendar page)."""
+
+    __tablename__ = "prediction_lessons"
+    __table_args__ = (Index("idx_prediction_lessons_user_active", "user_id", "active"),)
+
+    lesson_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    ticker = Column(String(20), nullable=True)
+    lesson = Column(Text, nullable=False)
+    source_date = Column(Date, nullable=False)
+    prediction_id = Column(
+        UUID(as_uuid=True), ForeignKey("daily_predictions.prediction_id", ondelete="SET NULL"), nullable=True
+    )
+    active = Column(Boolean, nullable=False, server_default="true")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
