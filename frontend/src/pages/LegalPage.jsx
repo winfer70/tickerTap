@@ -127,15 +127,15 @@ function DisclaimerContent() {
 function PrivacyContent() {
   return (
     <div className="legal-content">
-      <div className="legal-effective-date">EFFECTIVE DATE: MARCH 5, 2026</div>
+      <div className="legal-effective-date">EFFECTIVE DATE: SEPTEMBER 24, 2026</div>
 
       <section className="legal-section">
         <div className="legal-section-title">OVERVIEW</div>
         <p className="legal-text">
-          TickerTap is a self-hosted application. Your data is stored on
-          infrastructure controlled by the platform operator. This privacy policy
-          describes what data is collected, how it is used, and your rights
-          regarding that data.
+          TickerTap is a privately operated, self-hosted application. Your data is
+          stored on infrastructure controlled by the platform operator. This policy
+          describes what data is collected, how it is used, which outside services
+          receive any of it, and your rights regarding that data.
         </p>
       </section>
 
@@ -144,118 +144,193 @@ function PrivacyContent() {
 
         <div className="legal-subsection-title">Account Information</div>
         <ul className="legal-list">
-          <li>Email address (used for authentication and password recovery)</li>
-          <li>First and last name (used for display purposes)</li>
+          <li>Email address (authentication, password recovery, account notices)</li>
+          <li>First and last name (display)</li>
           <li>Hashed password (Argon2id &mdash; your plaintext password is never stored)</li>
+          <li>Preferences you set (currency, language, interface options)</li>
         </ul>
 
-        <div className="legal-subsection-title">Portfolio Data</div>
+        <div className="legal-subsection-title">Portfolio and Research Data</div>
         <ul className="legal-list">
-          <li>Portfolio names and descriptions you create</li>
-          <li>Securities holdings (ticker symbols, quantities, purchase prices, dates)</li>
-          <li>Transaction history (buys, sells, deposits, withdrawals)</li>
-          <li>Order records (limit orders, market orders, stop orders)</li>
+          <li>Portfolios, holdings (ticker symbols, quantities, purchase prices, dates, stop levels)</li>
+          <li>Transactions, orders, watchlists and alerts you create</li>
+          <li>Review reminders generated from your positions, and the daily model predictions, grades and lessons derived from them</li>
         </ul>
 
-        <div className="legal-subsection-title">Usage Data</div>
+        <div className="legal-subsection-title">Connected Services (only if you link them)</div>
+        <ul className="legal-list">
+          <li>Telegram: your Telegram chat ID, so notifications reach you</li>
+          <li>Google Calendar: an encrypted Google access grant and the ID of the calendar TickerTap creates (see GOOGLE USER DATA below)</li>
+        </ul>
+
+        <div className="legal-subsection-title">Usage and Security Data</div>
         <ul className="legal-list">
           <li>Authentication timestamps and session activity</li>
-          <li>Audit log entries for security-relevant actions (login, password changes)</li>
+          <li>Audit log entries for security-relevant actions (logins, password changes, linking or unlinking connected services, account deletion requests), including IP address and browser user agent</li>
         </ul>
       </section>
 
       <section className="legal-section">
         <div className="legal-section-title">HOW WE USE YOUR DATA</div>
         <ul className="legal-list">
-          <li>To authenticate you and maintain your session</li>
-          <li>To display your portfolio, holdings, and transaction history</li>
-          <li>To fetch market data for securities in your portfolio</li>
-          <li>To generate AI-scored news relevant to your holdings</li>
-          <li>To send password reset emails when requested</li>
+          <li>To authenticate you and keep your session secure</li>
+          <li>To show your portfolio, holdings, transactions and research tools</li>
+          <li>To fetch market data and news for the securities you hold or watch</li>
+          <li>To send the alerts, daily briefings and review reminders you have enabled</li>
+          <li>To generate AI analysis, daily predictions and their post-close reflections</li>
+          <li>To send account emails (password reset, verification, deletion notices)</li>
         </ul>
         <p className="legal-text">
-          TickerTap does not use your data for advertising, profiling, or
-          marketing purposes.
+          TickerTap does not use your data for advertising, profiling for others,
+          or marketing, and does not sell or rent it.
+        </p>
+      </section>
+
+      <section className="legal-section">
+        <div className="legal-section-title">AI PROCESSING</div>
+        <p className="legal-text">
+          News scoring, daily predictions, reflections and insider-activity analysis
+          are produced by language models running on hardware controlled by the
+          platform operator (a local Ollama server and the operator&apos;s self-hosted
+          assistant service). Your portfolio data is not sent to any external AI
+          provider. AI output is informational and is not financial advice.
+        </p>
+      </section>
+
+      <section className="legal-section">
+        <div className="legal-section-title">SERVICES THAT RECEIVE DATA</div>
+        <p className="legal-text">
+          Beyond the operator&apos;s own servers, these services receive data, each
+          only for the purpose stated:
+        </p>
+        <ul className="legal-list">
+          <li>
+            <strong>Cloudflare:</strong> all traffic to TickerTap passes through
+            Cloudflare&apos;s network (TLS termination and tunnelling to the
+            operator&apos;s server), so Cloudflare processes requests in transit
+          </li>
+          <li>
+            <strong>Yahoo Finance:</strong> ticker symbols are sent to retrieve market
+            data. No personal information is transmitted
+          </li>
+          <li>
+            <strong>Telegram (if you link it):</strong> alerts and briefings, which
+            contain tickers, prices, position details and model calls, are delivered
+            through Telegram&apos;s servers to your chat
+          </li>
+          <li>
+            <strong>Google Calendar (if you link it):</strong> review reminders are
+            written to a calendar in your own Google account &mdash; see below
+          </li>
+          <li>
+            <strong>Proton Mail:</strong> account emails are sent through the
+            operator&apos;s Proton Mail account, so your email address and the
+            message content pass through Proton
+          </li>
+        </ul>
+        <p className="legal-text">
+          Push notifications (ntfy) and the AI services run on servers controlled by
+          the platform operator.
+        </p>
+      </section>
+
+      <section className="legal-section">
+        <div className="legal-section-title">GOOGLE USER DATA</div>
+        <p className="legal-text">
+          If you choose to connect Google Calendar in Settings, TickerTap requests a
+          single permission,{" "}
+          <em>&ldquo;Make secondary Google calendars, and see, create, change, and delete events on them&rdquo;</em>{" "}
+          (scope <code>calendar.app.created</code>).
+        </p>
+        <ul className="legal-list">
+          <li>
+            <strong>What we access:</strong> only the &ldquo;TickerTap Reviews&rdquo;
+            calendar TickerTap creates in your account and the events on it. We do
+            not read your other calendars or events
+          </li>
+          <li>
+            <strong>What we store:</strong> an OAuth refresh token (encrypted with
+            AES-256-GCM, with the key held outside the database), the granted scope,
+            the ID of the TickerTap calendar and the IDs of events we created.
+            Access tokens are kept in memory only
+          </li>
+          <li>
+            <strong>What we write:</strong> your review reminders (phase reviews,
+            profit-target events, earnings). By default an event includes the
+            ticker, review type, rule text, entry price and percentage gain; you can
+            switch to ticker and review type only in Settings
+          </li>
+          <li>
+            <strong>How it is used:</strong> solely to keep that calendar in sync
+            with your reminders. Google user data is not used for advertising, is not
+            sold or transferred to anyone, is not used to train AI models, and is not
+            read by a person
+          </li>
+          <li>
+            <strong>Retention and removal:</strong> disconnecting in Settings, or
+            deleting your TickerTap account, revokes the grant with Google and
+            deletes the stored token immediately. You can also remove access in your
+            Google Account under Security &rarr; Third-party access. Events already
+            written stay in your calendar unless you choose to delete the TickerTap
+            calendar when disconnecting
+          </li>
+        </ul>
+        <p className="legal-text">
+          TickerTap&apos;s use and transfer of information received from Google APIs
+          adheres to the{" "}
+          <a
+            href="https://developers.google.com/terms/api-services-user-data-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Google API Services User Data Policy
+          </a>
+          , including the Limited Use requirements.
         </p>
       </section>
 
       <section className="legal-section">
         <div className="legal-section-title">DATA STORAGE AND SECURITY</div>
-        <p className="legal-text">
-          All data is stored in a PostgreSQL database on self-hosted
-          infrastructure. Data is not transmitted to or stored on third-party
-          cloud services beyond what is described in this policy.
-        </p>
         <ul className="legal-list">
-          <li>Authentication uses JWT tokens stored in your browser&apos;s sessionStorage (cleared when the browser tab closes)</li>
-          <li>Passwords are hashed using Argon2id before storage</li>
+          <li>Data is stored in a PostgreSQL database on the operator&apos;s self-hosted infrastructure</li>
           <li>All connections use TLS encryption in transit</li>
-          <li>Session tokens expire automatically and are refreshed transparently</li>
-          <li>An inactivity timer automatically logs you out after 5 minutes of inactivity</li>
-        </ul>
-      </section>
-
-      <section className="legal-section">
-        <div className="legal-section-title">THIRD-PARTY DATA SHARING</div>
-        <p className="legal-text">
-          TickerTap does not sell, rent, or share your personal data with third
-          parties. The only external service interactions are:
-        </p>
-        <ul className="legal-list">
-          <li>
-            <strong>Yahoo Finance API:</strong> Ticker symbols from your portfolio are
-            sent to Yahoo Finance to retrieve market data. No personal information
-            (name, email, account details) is transmitted
-          </li>
-          <li>
-            <strong>SMTP provider (if configured):</strong> Your email address is
-            transmitted to the configured email service solely for sending password
-            reset links
-          </li>
+          <li>Passwords are hashed with Argon2id; third-party access tokens are encrypted at rest</li>
+          <li>Access tokens are kept in your browser&apos;s sessionStorage (cleared when the tab closes) and expire automatically</li>
+          <li>An inactivity timer logs you out after 5 minutes of inactivity</li>
         </ul>
       </section>
 
       <section className="legal-section">
         <div className="legal-section-title">DATA RETENTION</div>
         <p className="legal-text">
-          Your data is retained for as long as your account exists. Transaction
-          history and audit logs are retained for the lifetime of your account to
-          maintain data integrity and security audit trails.
+          Your data is kept while your account exists. When you request deletion,
+          connected services are disconnected immediately and your account is
+          scheduled for permanent deletion after 30 days (you can cancel within that
+          window), or deleted immediately if you choose permanent deletion. Deletion
+          removes your portfolio data, transactions, predictions, reminders and
+          connected-service tokens.
         </p>
       </section>
 
       <section className="legal-section">
         <div className="legal-section-title">YOUR RIGHTS</div>
         <ul className="legal-list">
-          <li>
-            <strong>Access:</strong> You can view all data associated with your
-            account through the application interface
-          </li>
-          <li>
-            <strong>Correction:</strong> You can update your profile information
-            through account settings
-          </li>
-          <li>
-            <strong>Deletion:</strong> You may request complete deletion of your
-            account and all associated data by contacting the platform operator.
-            Account deletion cascades to all portfolio data, transactions, holdings,
-            and orders
-          </li>
-          <li>
-            <strong>Export:</strong> Portfolio and transaction data can be viewed and
-            exported through the application interface
-          </li>
+          <li><strong>Access and export:</strong> view your data in the application; contact the operator for a full copy</li>
+          <li><strong>Correction:</strong> update your profile and portfolio data in the application</li>
+          <li><strong>Deletion:</strong> delete your account yourself in Settings, as described above</li>
+          <li><strong>Withdraw consent:</strong> disconnect Telegram or Google Calendar at any time</li>
+          <li><strong>Questions or complaints:</strong> contact the platform operator; if you are in the EU you may also contact your data protection authority</li>
         </ul>
       </section>
 
       <section className="legal-section">
         <div className="legal-section-title">COOKIES AND LOCAL STORAGE</div>
         <p className="legal-text">
-          TickerTap does not use cookies. Authentication tokens are stored in
-          sessionStorage (not localStorage), meaning they are automatically
-          cleared when you close the browser tab. A single localStorage key is
-          used solely for inactivity tracking to protect your session. No
-          tracking cookies, analytics cookies, or third-party cookies are used.
+          TickerTap sets one first-party, httpOnly cookie that holds your session
+          refresh token; it is sent only to TickerTap&apos;s authentication
+          endpoints. Your access token is kept in sessionStorage, and localStorage is
+          used for inactivity tracking and interface preferences. No tracking,
+          analytics or third-party cookies are used.
         </p>
       </section>
     </div>
