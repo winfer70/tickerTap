@@ -175,3 +175,32 @@ class TestLoadBooksWatchlistParity:
         books, sectors = await load_books(session)
         assert books == {}
         assert sectors == {}
+
+
+class TestLoadBooksMultiLot:
+    @pytest.mark.asyncio
+    async def test_lots_of_one_ticker_are_aggregated_not_overwritten(self):
+        uid = uuid.uuid4()
+        lot1 = _mock_position(
+            ticker="GC=F", quantity=Decimal("2"), purchase_price=Decimal("4566.73"),
+            hard_stop_loss=None, soft_stop_loss=Decimal("4000"), date_entered=date(2025, 12, 29),
+            asset_type="physical",
+        )
+        lot2 = _mock_position(
+            ticker="GC=F", quantity=Decimal("2"), purchase_price=Decimal("4563.25"),
+            hard_stop_loss=Decimal("4100"), soft_stop_loss=Decimal("4200"), date_entered=date(2026, 1, 5),
+            asset_type="physical",
+        )
+        session = AsyncMock()
+        session.execute = AsyncMock(
+            side_effect=[_positions_result([(lot1, uid), (lot2, uid)]), _watchlist_result([])]
+        )
+
+        books, _ = await load_books(session)
+        pos = books[uid].positions["GC=F"]
+
+        assert pos["quantity"] == 4
+        assert abs(pos["purchase_price"] - 4564.99) < 0.001
+        assert pos["hard_stop"] == 4100 and pos["soft_stop"] == 4200
+        assert pos["date_entered"] == date(2025, 12, 29)
+        assert pos["asset_type"] == "physical"
