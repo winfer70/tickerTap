@@ -803,6 +803,9 @@ async def update_preferences(
             detail=f"Unsupported language. Must be one of: {', '.join(sorted(SUPPORTED_LANGUAGES))}",
         )
 
+    # get_current_user loads the user in its own, already-closed session;
+    # re-attach it here or changes are never flushed (and refresh/delete raise).
+    current_user = await db.merge(current_user)
     existing = dict(current_user.preferences or {})
     if payload.currency:
         existing["currency"] = payload.currency
@@ -976,6 +979,9 @@ async def deactivate_account(
             detail="invalid credentials",
         )
 
+    # get_current_user loads the user in its own, already-closed session;
+    # re-attach it here or changes are never flushed (and refresh/delete raise).
+    current_user = await db.merge(current_user)
     current_user.is_active = False
     current_user.deactivated_at = datetime.now(timezone.utc)
 
@@ -1148,6 +1154,9 @@ async def delete_account(
     Raises:
         HTTP 401: Incorrect password.
     """
+    # get_current_user loads the user in its own, already-closed session;
+    # re-attach it here or changes are never flushed (and refresh/delete raise).
+    current_user = await db.merge(current_user)
     if not verify_password(current_user.password_hash, payload.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -1302,6 +1311,9 @@ async def update_profile(
     Returns:
         UserProfileOut — the full updated profile including preferences.
     """
+    # get_current_user loads the user in its own, already-closed session;
+    # re-attach it here or changes are never flushed (and refresh/delete raise).
+    current_user = await db.merge(current_user)
     # Apply only the fields that were explicitly provided.
     if payload.first_name is not None:
         current_user.first_name = payload.first_name
