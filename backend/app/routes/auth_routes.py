@@ -44,6 +44,7 @@ from ..email import (
     send_reactivation_email,
     send_verification_email,
 )
+from ..integrations import google_calendar
 from ..limiter import limiter
 from ..models import AuditLog, EmailVerificationToken, PasswordResetToken, RefreshToken, TelegramInvite, User
 
@@ -1163,6 +1164,10 @@ async def delete_account(
             detail="invalid credentials",
         )
 
+    # Either mode: revoke any linked Google Calendar grant now, so no third-party
+    # access survives the deletion request (the user can relink if they cancel).
+    await google_calendar.unlink(db, current_user.user_id)
+
     if payload.mode == "permanent":
         # Immediate irreversible deletion — CASCADE will clean up related rows.
         audit = AuditLog(
@@ -1527,6 +1532,7 @@ async def _deletion_purge_loop():
                         user.user_id,
                         user.deletion_scheduled_at,
                     )
+                    await google_calendar.unlink(session, user.user_id)
                     await session.delete(user)
 
                 await session.commit()

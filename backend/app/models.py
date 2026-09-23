@@ -25,6 +25,7 @@ from sqlalchemy import (
     Index,
     Integer,
     JSON,
+    LargeBinary,
     Numeric,
     SmallInteger,
     String,
@@ -1656,3 +1657,27 @@ class PredictionLesson(Base):
     )
     active = Column(Boolean, nullable=False, server_default="true")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class GoogleCalendarLink(Base):
+    """A user's link to their own Google account for pushing review reminders
+    into an app-created calendar (scope calendar.app.created). Only the
+    refresh token is stored, AES-GCM encrypted and bound to user_id
+    (token_crypto.py); access tokens are never persisted."""
+
+    __tablename__ = "google_calendar_links"
+
+    link_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    refresh_token_enc = Column(LargeBinary, nullable=False)
+    key_version = Column(SmallInteger, nullable=False)
+    granted_scopes = Column(Text, nullable=False)
+    google_calendar_id = Column(String(256), nullable=True)
+    status = Column(String(12), nullable=False, server_default="active")  # active | error
+    detail_level = Column(String(10), nullable=False, server_default="full")  # full | minimal
+    last_sync_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+    linked_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

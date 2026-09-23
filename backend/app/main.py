@@ -19,6 +19,7 @@ API versioning:
 """
 
 import asyncio
+import logging
 import os
 import time
 import uuid
@@ -45,6 +46,7 @@ from .routes import (
     chart_templates,
     degiro_routes,
     feedback,
+    google_link,
     guide,
     holdings,
     import_routes,
@@ -72,6 +74,22 @@ from .telegram_bot.bot import start_bot, stop_bot
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 configure_structlog()
+
+
+class _RedactOAuthCallbackQuery(logging.Filter):
+    """uvicorn's access log prints the full request line; strip the query from
+    the Google OAuth callback so the one-time code/state never reach logs."""
+
+    _PATH = "/api/v1/integrations/google/callback"
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str) and args[2].startswith(self._PATH):
+            record.args = args[:2] + (self._PATH,) + args[3:]
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(_RedactOAuthCallbackQuery())
 logger = structlog.get_logger("tickerTap")
 
 # ── Application ──────────────────────────────────────────────────────────────
@@ -368,6 +386,7 @@ app.include_router(metrics_routes.router, prefix=_V1)
 app.include_router(internal_portfolio.router, prefix=_V1)
 app.include_router(analysis_routes.router, prefix=_V1)
 app.include_router(review_calendar.router, prefix=_V1)
+app.include_router(google_link.router, prefix=_V1)
 
 # Register the 30-day news retention cleanup background task (Phase 9).
 register_retention_task(app)

@@ -25,3 +25,4 @@ structlog>=23.1
 python-multipart>=0.0.6
 pyotp>=2.9.0
 python-telegram-bot>=21.0
+cryptography>=43
