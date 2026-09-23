@@ -24,6 +24,7 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "../api/client";
 import { Ic } from "../components/common/Icons";
+import GoogleCalendarSection from "../components/settings/GoogleCalendarSection";
 import { useI18n } from "../context/I18nContext";
 
 /* ── Currency and language option labels ──────────────────────────────────── */
@@ -723,6 +724,8 @@ export function SettingsPage({ token, goBack, onLogout }) {
           </>
         )}
       </div>
+
+      <GoogleCalendarSection token={token} S={S} />
 
       {/* ── Account Section ──────────────────────────────────────────── */}
       <div style={S.section}>

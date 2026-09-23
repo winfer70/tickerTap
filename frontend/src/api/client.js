@@ -397,6 +397,15 @@ const api = {
   analyzeInsiderActivity: (body, token) =>
     apiFetch("/insider/analyze", { method: "POST", body, token }),
 
+  // ── Google Calendar link (per-user OAuth) ─────────────────────────────────
+  getGoogleCalendarStatus: (token) => apiFetch("/integrations/google/status", { token }),
+  startGoogleCalendarLink: (token) =>
+    apiFetch("/integrations/google/authorize", { method: "POST", token }),
+  updateGoogleCalendarSettings: (detailLevel, token) =>
+    apiFetch("/integrations/google/settings", { method: "PATCH", body: { detail_level: detailLevel }, token }),
+  unlinkGoogleCalendar: (deleteCalendar, token) =>
+    apiFetch(`/integrations/google/link?delete_calendar=${deleteCalendar ? "true" : "false"}`, { method: "DELETE", token }),
+
   // ── Calendar (rules-driven reviews + daily prediction loop) ──────────────
   getCalendarEvents: (start, end, token) =>
     apiFetch(`/calendar/events?start=${start}&end=${end}`, { token }),
