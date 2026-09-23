@@ -232,7 +232,9 @@ class TestPlannedSellAlert:
         assert kwargs["metadata"] == {"source": "form144_monitor", "ticker": "CRCL"}
 
     @pytest.mark.asyncio
-    async def test_sends_planned_sell_alert_to_watchlister_with_correct_wording(self, monkeypatch):
+    async def test_no_planned_sell_alert_for_watchlist_only_ticker(self, monkeypatch):
+        """Form 144 is a softer notice-of-intent signal — held positions only
+        (see form144_monitor docstring); a watchlist-only ticker gets nothing."""
         monkeypatch.setenv("SEC_USER_AGENT", "TickerTap Test test@example.com")
         watcher = uuid.uuid4()
         session = AsyncMock()
@@ -256,10 +258,7 @@ class TestPlannedSellAlert:
         ):
             await form144_monitor.poll_form144_filings({})
 
-        kwargs = mock_notify.call_args.kwargs
-        assert kwargs["user_id"] == watcher
-        assert "on your watchlist" in kwargs["body"].lower()
-        assert "you hold this position" not in kwargs["body"].lower()
+        mock_notify.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_no_alert_when_ticker_not_tracked_by_anyone(self, monkeypatch):

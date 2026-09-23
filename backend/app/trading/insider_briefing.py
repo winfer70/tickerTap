@@ -30,6 +30,7 @@ class PositionBrief:
     hard_stop: Optional[float] = None
     soft_stop: Optional[float] = None
     date_entered: Optional[date] = None
+    asset_type: Optional[str] = None
 
 
 @dataclass

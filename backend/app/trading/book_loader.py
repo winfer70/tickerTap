@@ -9,7 +9,9 @@ correlation note, so this had to live somewhere both can reach.
 """
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +19,50 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models import Portfolio, PortfolioPosition, Watchlist, WatchlistItem
 from .briefing_advice import load_investment_rules
 from .insider_gate import BookSnapshot, sector_exposure
+
+
+def entry_date(pos) -> Optional[date]:
+    """date_entered is rarely set (DeGiro sync/manual adds fill purchase_date
+    instead), so fall back to purchase_date for phase-framework math."""
+    if pos.date_entered is not None:
+        return pos.date_entered
+    return pos.purchase_date.date() if pos.purchase_date is not None else None
+
+
+def is_stock(asset_type: Optional[str]) -> bool:
+    """Phase framework / T1-T2 / daily predictions apply to stock trades,
+    not long-term crypto or physical-gold holdings."""
+    return (asset_type or "stock").lower() in ("stock", "etf")
+
+
+def _merge_lot(positions: dict, ticker: str, pos) -> None:
+    """One entry per ticker even when it's held in several lots: quantities
+    summed, cost basis quantity-weighted, earliest entry date, tightest
+    (highest) stops. Previously each lot overwrote the last, so a two-lot
+    holding counted only its last lot's quantity and price."""
+    qty = float(pos.quantity or 0)
+    price = float(pos.purchase_price or 0)
+    lot = {
+        "quantity": qty,
+        "purchase_price": price,
+        "hard_stop": float(pos.hard_stop_loss) if pos.hard_stop_loss is not None else None,
+        "soft_stop": float(pos.soft_stop_loss) if pos.soft_stop_loss is not None else None,
+        "date_entered": entry_date(pos),
+        "asset_type": pos.asset_type,
+    }
+    prev = positions.get(ticker)
+    if prev is None:
+        positions[ticker] = lot
+        return
+    total = prev["quantity"] + qty
+    if total:
+        prev["purchase_price"] = (prev["quantity"] * prev["purchase_price"] + qty * price) / total
+    prev["quantity"] = total
+    for key in ("hard_stop", "soft_stop"):
+        values = [v for v in (prev[key], lot[key]) if v is not None]
+        prev[key] = max(values) if values else None
+    dates = [d for d in (prev["date_entered"], lot["date_entered"]) if d is not None]
+    prev["date_entered"] = min(dates) if dates else None
 
 
 def load_avoid_tickers() -> set:
@@ -91,13 +137,7 @@ async def load_books(session: AsyncSession) -> tuple[dict, dict]:
             else:
                 mv = Decimal(str(pos.purchase_price or 0)) * Decimal(str(pos.quantity or 0))
             pos_dicts.append({"sector": pos.sector or "Unknown", "market_value": mv})
-            positions[ticker] = {
-                "quantity": float(pos.quantity or 0),
-                "purchase_price": float(pos.purchase_price or 0),
-                "hard_stop": float(pos.hard_stop_loss) if pos.hard_stop_loss is not None else None,
-                "soft_stop": float(pos.soft_stop_loss) if pos.soft_stop_loss is not None else None,
-                "date_entered": pos.date_entered,
-            }
+            _merge_lot(positions, ticker, pos)
         total = sum((p["market_value"] for p in pos_dicts), Decimal("0"))
         books[uid] = BookSnapshot(
             total_value=total,

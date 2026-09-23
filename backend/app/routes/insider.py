@@ -778,7 +778,12 @@ async def analyze_with_ai(
             verdict=analysis.verdict, tickers_analyzed=[], filing_count=0, created_at=analysis.created_at,
         )
 
-    portfolio_snapshot = {t: positions[t] for t in ticker_groups if t in positions}
+    # JSONB can't store date objects (date_entered) — serialize them as ISO strings.
+    portfolio_snapshot = {
+        t: {k: (v.isoformat() if isinstance(v, date) else v) for k, v in positions[t].items()}
+        for t in ticker_groups
+        if t in positions
+    }
     prompt = _build_analysis_prompt(ticker_groups, positions)
 
     analysis_id = uuid4()
