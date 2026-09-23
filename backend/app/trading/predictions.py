@@ -180,7 +180,9 @@ def _rate(correct: int, total: int) -> str:
 
 
 def _fmt_pct(v: Optional[float]) -> str:
-    return "n/a" if v is None else f"{v:+.1f}%"
+    if v is None:
+        return "n/a"
+    return "0.0%" if abs(v) < 0.05 else f"{v:+.1f}%"
 
 
 def build_prediction_prompt(

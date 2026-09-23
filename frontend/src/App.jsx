@@ -70,6 +70,7 @@ import LearningPage                  from "./pages/LearningPage";
 import ExitPointsPage                from "./pages/ExitPointsPage";
 import ResearchPage                  from "./pages/ResearchPage";
 import AdminPage                     from "./pages/AdminPage";
+import CalendarPage                  from "./pages/CalendarPage";
 import { OnboardingTutorial }        from "./components/common/OnboardingTutorial";
 
 /* ── API ─────────────────────────────────────────────────────────────────── */
@@ -204,6 +205,7 @@ function AppShell({ page, setPage, goBack, toasts, addToast, pageParams }) {
     { id: "insider-all",      label: "ALL FILINGS",          Icon: Ic.file         },
     { id: "watchlist",         label: t("nav.watchlist"),    Icon: Ic.watchlist    },
     { id: "portfolio-manager",label: t("nav.portfolio"),    Icon: Ic.portfolio    },
+    { id: "calendar",          label: "CALENDAR",             Icon: Ic.calendar     },
     { id: "trading",          label: "TRADING AI",           Icon: Ic.trading      },
     { id: "research",          label: "RESEARCH",             Icon: Ic.charts       },
     { id: "marketplace",       label: "MARKETPLACE",          Icon: Ic.marketplace  },
@@ -333,6 +335,7 @@ function AppShell({ page, setPage, goBack, toasts, addToast, pageParams }) {
                   "insider-all": "ALL FILINGS",
                   watchlist: t("nav.watchlist"),
                   "portfolio-manager": t("nav.portfolio"),
+                  calendar: "CALENDAR",
                   settings: t("nav.settings"),
                   feedback: t("nav.feedback"),
                   guide: t("nav.guide"),
@@ -473,6 +476,9 @@ function AppShell({ page, setPage, goBack, toasts, addToast, pageParams }) {
         {page === "alerts" && (
           <AlertsPage token={authToken} />
         )}
+        {page === "calendar" && (
+          <CalendarPage token={authToken} />
+        )}
         {page === "learning" && (
           <LearningPage token={authToken} setPage={setPage} />
         )}
@@ -560,7 +566,7 @@ export default function App() {
     /* Derive initial page from URL pathname when no special query params */
     const KNOWN_PAGES = new Set([
       "dashboard", "transactions", "orders", "charts", "news", "watchlist",
-      "portfolio-manager", "trading", "marketplace", "alerts", "learning", "exit-points", "research", "feedback", "import", "settings", "guide", "admin",
+      "portfolio-manager", "calendar", "trading", "marketplace", "alerts", "learning", "exit-points", "research", "feedback", "import", "settings", "guide", "admin",
       "legal", "legal-privacy", "legal-terms", "legal-disclaimer",
       "login", "register", "forgot-password", "reset-password",
       "verify-email", "token-action", "deactivated",

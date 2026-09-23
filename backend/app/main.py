@@ -58,6 +58,7 @@ from .routes import (
     portfolio_manager,
     portfolio_rules,
     reports,
+    review_calendar,
     scanner,
     telegram_invites,
     transactions,
@@ -366,6 +367,7 @@ app.include_router(scanner.router, prefix=_V1)
 app.include_router(metrics_routes.router, prefix=_V1)
 app.include_router(internal_portfolio.router, prefix=_V1)
 app.include_router(analysis_routes.router, prefix=_V1)
+app.include_router(review_calendar.router, prefix=_V1)
 
 # Register the 30-day news retention cleanup background task (Phase 9).
 register_retention_task(app)

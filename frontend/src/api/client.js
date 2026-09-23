@@ -397,6 +397,15 @@ const api = {
   analyzeInsiderActivity: (body, token) =>
     apiFetch("/insider/analyze", { method: "POST", body, token }),
 
+  // ── Calendar (rules-driven reviews + daily prediction loop) ──────────────
+  getCalendarEvents: (start, end, token) =>
+    apiFetch(`/calendar/events?start=${start}&end=${end}`, { token }),
+  updateReminderStatus: (reminderId, status, token) =>
+    apiFetch(`/calendar/reminders/${reminderId}`, { method: "PATCH", body: { status }, token }),
+  getPredictionLessons: (token) => apiFetch("/calendar/lessons", { token }),
+  setLessonActive: (lessonId, active, token) =>
+    apiFetch(`/calendar/lessons/${lessonId}`, { method: "PATCH", body: { active }, token }),
+
   // ── Guide ──────────────────────────────────────────────────────────────────
   /**
    * Submit a question to the AI guide (Ollama proxy).
