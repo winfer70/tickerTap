@@ -133,3 +133,40 @@ def test_clip_cuts_on_word_boundary():
     assert _clip("short", 10) == "short"
     out = _clip("broader market sentiment or unanticipated catalysts", 40)
     assert out.endswith("…") and len(out) <= 40 and "catal" not in out
+
+
+def test_session_change_distinguishes_nan_bar_from_holiday(monkeypatch):
+    from app.trading import predictions as P
+
+    d = date
+    bars = [(d(2026, 9, 18), 336.13), (d(2026, 9, 21), 338.98), (d(2026, 9, 22), None)]
+    monkeypatch.setattr(P, "_daily_closes", lambda sym, period, keep_missing=False: bars)
+
+    monkeypatch.setattr(P, "_intraday_closes", lambda sym: {})
+    assert P.session_change("AAPL", d(2026, 9, 22)) == ("pending", None, None)
+
+    monkeypatch.setattr(P, "_intraday_closes", lambda sym: {d(2026, 9, 22): 341.0})
+    assert P.session_change("AAPL", d(2026, 9, 22)) == ("ok", 338.98, 341.0)
+
+    # A NaN bar followed by a later session must never read as a market holiday.
+    later = bars + [(d(2026, 9, 23), 345.0)]
+    monkeypatch.setattr(P, "_daily_closes", lambda sym, period, keep_missing=False: later)
+    monkeypatch.setattr(P, "_intraday_closes", lambda sym: {})
+    assert P.session_change("AAPL", d(2026, 9, 22)) == ("pending", None, None)
+    # ...and the next day can't be graded against an unknown previous close.
+    assert P.session_change("AAPL", d(2026, 9, 23)) == ("pending", None, None)
+
+    # A date with no bar but a later one is a genuine non-session (weekend/holiday).
+    assert P.session_change("AAPL", d(2026, 9, 19)) == ("no_session", None, None)
+    assert P.session_change("AAPL", d(2026, 9, 21)) == ("ok", 336.13, 338.98)
+
+
+def test_features_fill_nan_last_session_from_intraday(monkeypatch):
+    from app.trading import predictions as P
+
+    closes = [(date(2026, 8, 1) + __import__("datetime").timedelta(days=i), 100.0 + i) for i in range(30)]
+    closes[-1] = (closes[-1][0], None)
+    monkeypatch.setattr(P, "_daily_closes", lambda sym, period, keep_missing=False: closes)
+    monkeypatch.setattr(P, "_intraday_closes", lambda sym: {closes[-1][0]: 150.0})
+    f = P.ticker_features("AAPL", date(2026, 9, 30))
+    assert f["last_date"] == closes[-1][0] and f["close"] == 150.0

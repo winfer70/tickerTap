@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import re
 from collections import defaultdict
@@ -300,7 +301,10 @@ def _bar_date(ts) -> date:
     return ts.date()
 
 
-def _daily_closes(sym: str, period: str) -> list[tuple[date, float]]:
+def _daily_closes(sym: str, period: str, keep_missing: bool = False) -> list[tuple[date, Optional[float]]]:
+    """Daily (date, close) bars. yfinance sometimes returns the latest bar with
+    a NaN close; keep_missing=True keeps it as (date, None) so callers can tell
+    "bar exists but not ready" apart from "no session that day"."""
     hist = yf.Ticker(sym).history(period=period, interval="1d")
     out = []
     if hist is None or hist.empty:
@@ -309,10 +313,43 @@ def _daily_closes(sym: str, period: str) -> list[tuple[date, float]]:
         try:
             c = float(close)
         except (TypeError, ValueError):
-            continue
-        if c == c and c > 0:
+            c = float("nan")
+        if not math.isnan(c) and c > 0:
             out.append((_bar_date(ts), c))
+        elif keep_missing:
+            out.append((_bar_date(ts), None))
     return out
+
+
+def _intraday_closes(sym: str) -> dict:
+    """Last regular-session 5-minute close per day over the past 5 days —
+    fallback for daily bars whose close isn't populated yet."""
+    try:
+        hist = yf.Ticker(sym).history(period="5d", interval="5m")
+    except Exception:
+        return {}
+    out: dict = {}
+    if hist is None or hist.empty:
+        return out
+    for ts, close in zip(hist.index, hist["Close"].tolist()):
+        try:
+            c = float(close)
+        except (TypeError, ValueError):
+            continue
+        if not math.isnan(c) and c > 0:
+            out[_bar_date(ts)] = c
+    return out
+
+
+def _filled_bars(sym: str, period: str) -> list[tuple[date, Optional[float]]]:
+    """Daily bars with recent NaN closes filled from intraday data; a bar that
+    still can't be filled stays (date, None) = present but not ready."""
+    bars = _daily_closes(sym, period, keep_missing=True)
+    if not any(c is None for _, c in bars[-5:]):
+        return bars
+    intraday = _intraday_closes(sym)
+    recent = {d for d, _ in bars[-5:]}
+    return [(d, intraday.get(d) if c is None and d in recent else c) for d, c in bars]
 
 
 def _pct(a: float, b: float) -> Optional[float]:
@@ -321,7 +358,7 @@ def _pct(a: float, b: float) -> Optional[float]:
 
 def ticker_features(sym: str, trade_date: date) -> Optional[dict]:
     """Price action up to the previous session (today's partial bar dropped)."""
-    bars = [b for b in _daily_closes(sym, "3mo") if b[0] < trade_date]
+    bars = [(d, c) for d, c in _filled_bars(sym, "3mo") if d < trade_date and c is not None]
     if len(bars) < 2:
         return None
     c = [x[1] for x in bars]
@@ -340,10 +377,14 @@ def ticker_features(sym: str, trade_date: date) -> Optional[dict]:
 
 def session_change(sym: str, day: date) -> tuple[str, Optional[float], Optional[float]]:
     """("ok", prev_close, close) | ("no_session", None, None) | ("pending", None, None)."""
-    bars = _daily_closes(sym, "1mo")
+    bars = _filled_bars(sym, "1mo")
     for i, (d, close) in enumerate(bars):
-        if d == day:
-            return ("ok", bars[i - 1][1], close) if i > 0 else ("pending", None, None)
+        if d != day:
+            continue
+        prev = bars[i - 1][1] if i > 0 else None
+        if close is None or prev is None:
+            return "pending", None, None
+        return "ok", prev, close
     if any(d > day for d, _ in bars):
         return "no_session", None, None
     return "pending", None, None
